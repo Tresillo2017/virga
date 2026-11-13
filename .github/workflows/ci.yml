@@ -26,7 +26,7 @@ jobs:
           java-version: 21
 
       # Accepts the SDK licences so the Android Gradle plugin can fetch the platform and build tools it needs.
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
 
       - uses: gradle/actions/setup-gradle@v4
 
