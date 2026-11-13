@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.tomasps.virga.core.ui.components.KeyValueRow
+import com.tomasps.virga.core.ui.components.SectionCard
 import com.tomasps.virga.core.ui.components.OpenInDashboardRow
 import com.tomasps.virga.core.ui.components.SectionHeader
 import com.tomasps.virga.core.ui.dialogs.TypedNameConfirmDialog
@@ -90,14 +91,15 @@ internal fun SettingsTab(state: DatabaseSettingsUiState, callbacks: SettingsCall
 
 @Composable
 private fun DatabaseFacts(database: D1Database) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        KeyValueRow(key = stringResource(R.string.d1_fact_name), value = database.name.orEmpty())
-        KeyValueRow(key = stringResource(R.string.d1_fact_uuid), value = database.uuid.orEmpty())
-        KeyValueRow(key = stringResource(R.string.d1_fact_created), value = formatCreatedOn(database.createdAt) ?: stringResource(R.string.d1_unknown))
-        KeyValueRow(key = stringResource(R.string.d1_fact_size), value = database.fileSize?.let { formatBytes(it) } ?: stringResource(R.string.d1_unknown))
-        KeyValueRow(key = stringResource(R.string.d1_fact_jurisdiction), value = database.jurisdiction ?: stringResource(R.string.d1_jurisdiction_default))
-        KeyValueRow(key = stringResource(R.string.d1_fact_version), value = database.version ?: stringResource(R.string.d1_unknown))
-    }
+    val facts = listOf<@Composable () -> Unit>(
+        { KeyValueRow(key = stringResource(R.string.d1_fact_name), value = database.name.orEmpty()) },
+        { KeyValueRow(key = stringResource(R.string.d1_fact_uuid), value = database.uuid.orEmpty()) },
+        { KeyValueRow(key = stringResource(R.string.d1_fact_created), value = formatCreatedOn(database.createdAt) ?: stringResource(R.string.d1_unknown)) },
+        { KeyValueRow(key = stringResource(R.string.d1_fact_size), value = database.fileSize?.let { formatBytes(it) } ?: stringResource(R.string.d1_unknown)) },
+        { KeyValueRow(key = stringResource(R.string.d1_fact_jurisdiction), value = database.jurisdiction?.uppercase() ?: stringResource(R.string.d1_jurisdiction_default)) },
+        { KeyValueRow(key = stringResource(R.string.d1_fact_version), value = database.version ?: stringResource(R.string.d1_unknown)) },
+    )
+    SectionCard(rows = facts)
 }
 
 @Composable
@@ -119,6 +121,6 @@ private fun ReplicationOption(
             ),
     ) {
         RadioButton(selected = mode == selected, onClick = null, enabled = !isSaving)
-        Text(stringResource(mode.labelRes))
+        Text(stringResource(mode.labelRes), modifier = Modifier.padding(start = 8.dp))
     }
 }

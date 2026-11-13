@@ -38,6 +38,7 @@ fun BarChart(
         description = description,
         isEmpty = finite.isEmpty(),
         modifier = modifier,
+        yDomain = domain,
         footer = { AxisLabels(finite.map { it.label }) },
     ) {
         Canvas(Modifier.fillMaxSize()) {

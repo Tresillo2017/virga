@@ -77,7 +77,7 @@ internal fun KvExpirationFields(
                     ),
             ) {
                 RadioButton(selected = draft.mode == mode, onClick = null)
-                Text(stringResource(modeLabel(mode)))
+                Text(stringResource(modeLabel(mode)), modifier = Modifier.padding(start = 8.dp))
             }
         }
         if (draft.mode != KvExpirationMode.NONE) {

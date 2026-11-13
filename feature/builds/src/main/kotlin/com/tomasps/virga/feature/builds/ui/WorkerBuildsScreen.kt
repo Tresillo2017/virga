@@ -25,6 +25,7 @@ import com.tomasps.virga.core.navigation.LocalNavigator
 import com.tomasps.virga.core.navigation.BuildDetail
 import com.tomasps.virga.core.navigation.WorkerBuilds
 import com.tomasps.virga.core.ui.components.LoadMoreFooter
+import com.tomasps.virga.core.ui.components.SectionCard
 import com.tomasps.virga.core.ui.dialogs.ConfirmDialog
 import com.tomasps.virga.core.ui.components.ListRow
 import com.tomasps.virga.core.ui.components.StatusDot
@@ -122,13 +123,18 @@ private fun BuildList(
             }
         }
         items(items = builds, key = { it.buildUuid }) { build ->
-            BuildRow(build = build, onClick = { onOpen(build) })
+            SectionCard(
+                rows = listOf { BuildRow(build = build, onClick = { onOpen(build) }) },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = BUILD_CARD_SPACING),
+            )
         }
         item {
             LoadMoreFooter(state = loadMoreState, onLoadMore = onLoadMore)
         }
     }
 }
+
+private val BUILD_CARD_SPACING = 4.dp
 
 @Composable
 private fun BuildRow(build: BuildRecord, onClick: () -> Unit) {

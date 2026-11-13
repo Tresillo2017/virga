@@ -42,6 +42,7 @@ fun StackedBarChart(
             description = description,
             isEmpty = columns.isEmpty() || segmentNames.isEmpty(),
             modifier = Modifier,
+            yDomain = domain,
             footer = { AxisLabels(columns.map { it.label }) },
         ) {
             Canvas(Modifier.fillMaxSize()) {

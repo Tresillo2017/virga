@@ -27,6 +27,8 @@ import com.tomasps.virga.core.ui.R
 
 private val SECTION_PADDING = 16.dp
 private val KEY_VALUE_PADDING = 12.dp
+/** The value takes the room the key does not need, so long hostnames wrap less. */
+private val KEY_VALUE_GAP = 12.dp
 /** Same inset as a row or key-value line, so a header lines up with the text under it. */
 private val HEADER_INSET = 16.dp
 private val ROW_HORIZONTAL_PADDING = 16.dp
@@ -34,17 +36,22 @@ private val ROW_VERTICAL_PADDING = 10.dp
 private val ROW_GAP = 12.dp
 private val CHEVRON_SIZE = 18.dp
 
-/** Compact label above a group of rows, with an optional trailing action such as "See all". */
+/**
+ * Compact label above a group of rows, with an optional trailing action such as "See all".
+ * By default it lines up with the text inside a card; [alignToCardEdge] lines it up with the card itself, for tiles.
+ */
 @Composable
 fun SectionHeader(
     title: String,
     modifier: Modifier = Modifier,
     action: (@Composable () -> Unit)? = null,
+    alignToCardEdge: Boolean = false,
 ) {
+    val inset = if (alignToCardEdge) 0.dp else HEADER_INSET
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = HEADER_INSET, end = HEADER_INSET, top = 16.dp, bottom = 6.dp)
+            .padding(start = inset, end = inset, top = 16.dp, bottom = 6.dp)
             .semantics { heading() },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -130,7 +137,7 @@ fun KeyValueRow(
     ) {
         Text(
             text = key,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.padding(end = KEY_VALUE_GAP),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

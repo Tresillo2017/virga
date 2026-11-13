@@ -185,16 +185,18 @@ class AnimatedSplashTest {
     }
 
     /**
-     * Steps frame by frame, as a device does. A single advanceTimeBy would deliver one frame at the far end, so a clock
-     * that starts late would skip straight to its final state.
+     * Steps frame by frame, as a device does. A single advanceTimeBy delivers one frame at the far end, so a clock that
+     * starts late would skip straight to its final state, and a coroutine resumed by a state change needs an idle
+     * step before it asks for its next frame.
      */
     private fun advanceByMillis(millis: Long) {
         var remaining = millis
         while (remaining > 0L) {
             compose.mainClock.advanceTimeByFrame()
+            // Lets the splash's coroutines resume and request their next frame before the next step.
+            compose.waitForIdle()
             remaining -= FRAME_MS
         }
-        compose.waitForIdle()
     }
 
     private fun capture(): Bitmap {

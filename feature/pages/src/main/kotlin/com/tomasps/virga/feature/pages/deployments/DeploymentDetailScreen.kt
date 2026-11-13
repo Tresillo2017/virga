@@ -30,6 +30,7 @@ import com.tomasps.virga.core.navigation.LocalNavigator
 import com.tomasps.virga.core.ui.components.CodeBlock
 import com.tomasps.virga.core.ui.components.DestructiveMenuItem
 import com.tomasps.virga.core.ui.components.KeyValueRow
+import com.tomasps.virga.core.ui.components.SectionCard
 import com.tomasps.virga.core.ui.components.ListRow
 import com.tomasps.virga.core.ui.components.OpenInDashboardRow
 import com.tomasps.virga.core.ui.components.StatusDot
@@ -190,52 +191,42 @@ private fun DeploymentBody(
             }
         }
         item { SectionHeader(stringResource(R.string.pages_section_stages)) }
-        deployment.stageViews().forEach { stage ->
-            item(key = "stage-${stage.name}") {
-                StageRow(name = stage.name, status = stage.status)
-            }
+        item(key = "stages") {
+            SectionCard(
+                rows = deployment.stageViews().map { stage ->
+                    @Composable { StageRow(name = stage.name, status = stage.status) }
+                },
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
         }
         item { SectionHeader(stringResource(R.string.pages_section_commit)) }
         item {
-            KeyValueRow(
-                key = stringResource(R.string.pages_deployment_branch),
-                value = deployment.trigger?.metadata?.branch.orEmpty().ifBlank { stringResource(R.string.pages_value_none) },
-                monospaceValue = true,
-            )
-        }
-        item {
-            KeyValueRow(
-                key = stringResource(R.string.pages_deployment_commit),
-                value = deployment.trigger?.metadata?.commitHash.orEmpty().take(COMMIT_SHORT_LENGTH)
-                    .ifBlank { stringResource(R.string.pages_value_none) },
-                monospaceValue = true,
-            )
-        }
-        item {
-            KeyValueRow(
-                key = stringResource(R.string.pages_deployment_message),
-                value = deployment.trigger?.metadata?.commitMessage.orEmpty().ifBlank { stringResource(R.string.pages_value_none) },
-            )
-        }
-        item {
-            KeyValueRow(
-                key = stringResource(R.string.pages_deployment_url),
-                value = deployment.url.orEmpty().ifBlank { stringResource(R.string.pages_value_none) },
-                monospaceValue = true,
+            SectionCard(
+                rows = commitRows(deployment),
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
         }
         if (deployment.environment == PagesRules.ENVIRONMENT_PREVIEW) {
             item {
-                OpenInDashboardRow(
-                    label = stringResource(R.string.pages_promote_in_dashboard),
-                    description = stringResource(R.string.pages_promote_in_dashboard_description),
-                    onOpen = onOpenDashboard,
+                SectionCard(
+                    rows = listOf {
+                        OpenInDashboardRow(
+                            label = stringResource(R.string.pages_promote_in_dashboard),
+                            description = stringResource(R.string.pages_promote_in_dashboard_description),
+                            onOpen = onOpenDashboard,
+                        )
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
         }
         item { SectionHeader(stringResource(R.string.pages_section_log)) }
         item {
-            TextButton(onClick = onLoadLogs, modifier = Modifier.padding(horizontal = 16.dp)) {
+            TextButton(
+                onClick = onLoadLogs,
+                modifier = Modifier.padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(horizontal = 0.dp),
+            ) {
                 Text(stringResource(R.string.pages_action_show_log))
             }
         }
@@ -273,3 +264,38 @@ private fun StageRow(name: String, status: String) {
 }
 
 private const val COMMIT_SHORT_LENGTH = 8
+
+@Composable
+private fun commitRows(deployment: PagesDeployment): List<@Composable () -> Unit> {
+    val metadata = deployment.trigger?.metadata
+    val none = stringResource(R.string.pages_value_none)
+    return listOf(
+        {
+            KeyValueRow(
+                key = stringResource(R.string.pages_deployment_branch),
+                value = metadata?.branch.orEmpty().ifBlank { none },
+                monospaceValue = true,
+            )
+        },
+        {
+            KeyValueRow(
+                key = stringResource(R.string.pages_deployment_commit),
+                value = metadata?.commitHash.orEmpty().take(COMMIT_SHORT_LENGTH).ifBlank { none },
+                monospaceValue = true,
+            )
+        },
+        {
+            KeyValueRow(
+                key = stringResource(R.string.pages_deployment_message),
+                value = metadata?.commitMessage.orEmpty().ifBlank { none },
+            )
+        },
+        {
+            KeyValueRow(
+                key = stringResource(R.string.pages_deployment_url),
+                value = deployment.url.orEmpty().ifBlank { none },
+                monospaceValue = true,
+            )
+        },
+    )
+}

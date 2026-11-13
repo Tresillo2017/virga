@@ -54,6 +54,16 @@ class BuildUiFormatTest {
     }
 
     @Test
+    fun `a build with no uuid has no short id to show, so the detail header omits the id`() {
+        assertNull(shortBuildIdOrNull(""))
+    }
+
+    @Test
+    fun `a build with a uuid shows its first eight characters as the short id`() {
+        assertEquals("0a1b2c3d", shortBuildIdOrNull("0a1b2c3d-9999-4444-8888-000000000000"))
+    }
+
+    @Test
     fun `duration is shown only once the build has stopped and counts from its first started stage`() {
         val stopped = record(status = BuildStatus.STOPPED, outcome = BuildOutcome.SUCCESS, created = T0)
 

@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.tomasps.virga.core.navigation.LocalNavigator
 import com.tomasps.virga.core.ui.components.KeyValueRow
+import com.tomasps.virga.core.ui.components.SectionCard
 import com.tomasps.virga.core.ui.components.VirgaTabRow
 import com.tomasps.virga.core.ui.scaffold.ScreenScaffold
 import com.tomasps.virga.core.ui.state.UiStateContent
@@ -83,15 +84,22 @@ fun ProjectDetailRoute(projectName: String) {
 
 @Composable
 private fun ProjectHeader(project: PagesProject) {
-    Column {
-        KeyValueRow(
-            key = stringResource(R.string.pages_header_subdomain),
-            value = project.subdomain.orEmpty().ifBlank { stringResource(R.string.pages_value_none) },
-            monospaceValue = true,
-        )
-        KeyValueRow(
-            key = stringResource(R.string.pages_header_production_branch),
-            value = project.productionBranch.orEmpty().ifBlank { stringResource(R.string.pages_value_none) },
-        )
-    }
+    SectionCard(
+        rows = listOf(
+            {
+                KeyValueRow(
+                    key = stringResource(R.string.pages_header_subdomain),
+                    value = project.subdomain.orEmpty().ifBlank { stringResource(R.string.pages_value_none) },
+                    monospaceValue = true,
+                )
+            },
+            {
+                KeyValueRow(
+                    key = stringResource(R.string.pages_header_production_branch),
+                    value = project.productionBranch.orEmpty().ifBlank { stringResource(R.string.pages_value_none) },
+                )
+            },
+        ),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+    )
 }

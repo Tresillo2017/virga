@@ -6,7 +6,7 @@ Virga is not affiliated with, endorsed by, or sponsored by Cloudflare, Inc. Clou
 
 ## Status
 
-Pre-release. Version 0.1.0 (`versionName`), not yet published. Built and tested on an Android emulator. Not yet tested against a real production account with a least-privilege token. See `docs/release-checklist.md` for what is left before a Play Store release.
+Pre-release. Version 0.1.0 (`versionName`), not yet published. Tested on the JVM (see Testing) and on one Android 17 emulator with the demo account, including a minified release build signed with the debug key. Not run on any Android 9 or Android 16 device, not tested against a real production account with a least-privilege token, and not run on a lock screen or with two builds watched at once. See `docs/release-checklist.md` for what is left before a Play Store release.
 
 ## Features by product
 
@@ -88,4 +88,28 @@ Feature modules depend only on `core:*`. Cross-feature links go through route ke
 
 - Unit tests use Ktor `MockEngine` (through `mockCloudflareApi`), `kotlinx-coroutines-test` and Turbine.
 - Demo routes are tested through the same repositories the screens use.
-- Coverage target is 80% for non-UI code. Current numbers are in the build report of the final verification.
+- Screens are tested on the JVM with Robolectric Compose flows (`DemoFlow`, see `docs/feature-module-guide.md`, "UI flow tests"). Pixel layout and device behaviour are not covered by these tests.
+- Latest run (uncommitted working tree, 2026-11-14): `./gradlew clean assembleDebug testDebugUnitTest lintDebug` passed. `testDebugUnitTest` ran twice (the second with `--rerun`): 1551 tests, 0 failures, 21 skipped each time. Lint passed with no errors.
+- Coverage (`./gradlew koverXmlReport`), non-UI LINE coverage per module. Rule: UI classes are excluded when a package segment is `ui`, `brand`, `chart` or `components`, or when the top-level class name ends in `Screen`, `Route`, `Tab`, `Sheet`, `Dialog` or `ComposableSingletons`, or when it is a top-level `*Kt` file in a `ui` package. Generated classes (`$$serializer`, `_Factory`, `_Impl`, `BuildConfig`, `R`) are excluded. Computed from the root Kover XML by a script that sums covered and missed LINE counters per module.
+
+| Module | Non-UI covered / total | Non-UI line coverage |
+|---|---|---|
+| app | 31 / 194 | 16.0% |
+| core:auth | 165 / 193 | 85.5% |
+| core:common | 138 / 139 | 99.3% |
+| core:navigation | 107 / 109 | 98.2% |
+| core:network | 486 / 493 | 98.6% |
+| core:testing | 111 / 119 | 93.3% |
+| core:ui | 0 / 0 (all UI) | n/a |
+| feature:account | 486 / 493 | 98.6% |
+| feature:builds | 713 / 937 | 76.1% |
+| feature:d1 | 2178 / 2421 | 90.0% |
+| feature:domains | 2059 / 2201 | 93.5% |
+| feature:home | 1178 / 1193 | 98.7% |
+| feature:kv | 1188 / 1333 | 89.1% |
+| feature:pages | 1451 / 1585 | 91.5% |
+| feature:r2 | 2012 / 2468 | 81.5% |
+| feature:workers | 1413 / 1466 | 96.4% |
+| **All** | **13716 / 15344** | **89.4%** |
+
+Lowest figures: app (16.0%, not yet examined by line), feature:builds (76.1%) and feature:r2 (81.5%). The 80% target is met by every module except app, builds and r2. The per-class breakdown is not recorded here.

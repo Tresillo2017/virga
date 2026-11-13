@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -30,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import com.tomasps.virga.core.ui.R
 
 internal val CHART_HEIGHT = 168.dp
+internal val CHART_Y_AXIS_WIDTH = 48.dp
+private val Y_LABEL_GAP = 6.dp
 private val LABEL_TOP_PADDING = 6.dp
 private val LEGEND_SWATCH = 10.dp
 private val LEGEND_GAP = 6.dp
@@ -38,34 +41,69 @@ private val LEGEND_ITEM_GAP = 14.dp
 /**
  * Frame shared by every chart. The whole plot is one accessible element carrying [description];
  * the drawing underneath is cleared from the semantics tree. Empty data shows a "No data" label instead.
+ * With [yDomain], the top and bottom of the axis are labelled at the left of the plot.
  */
 @Composable
 internal fun ChartContainer(
     description: String,
     isEmpty: Boolean,
     modifier: Modifier,
+    yDomain: ChartDomain? = null,
     footer: @Composable () -> Unit = {},
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val showYAxis = yDomain != null && !isEmpty
     Column(modifier = modifier) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(CHART_HEIGHT)
-                .clearAndSetSemantics { contentDescription = description },
-        ) {
-            if (isEmpty) {
-                Text(
-                    text = stringResource(R.string.core_ui_no_data),
-                    modifier = Modifier.align(Alignment.Center),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                content()
+        Row(modifier = Modifier.fillMaxWidth().height(CHART_HEIGHT)) {
+            if (showYAxis) YAxisLabels(yDomain)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clearAndSetSemantics { contentDescription = description },
+            ) {
+                if (isEmpty) {
+                    Text(
+                        text = stringResource(R.string.core_ui_no_data),
+                        modifier = Modifier.align(Alignment.Center),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    content()
+                }
             }
         }
-        footer()
+        Box(modifier = Modifier.padding(start = if (showYAxis) CHART_Y_AXIS_WIDTH else 0.dp)) {
+            footer()
+        }
+    }
+}
+
+/** Maximum at the top of the plot and minimum at the bottom, so the scale of the lines is readable. */
+@Composable
+private fun YAxisLabels(domain: ChartDomain) {
+    val locale = LocalConfiguration.current.locales[0]
+    Column(
+        modifier = Modifier
+            .width(CHART_Y_AXIS_WIDTH)
+            .fillMaxHeight()
+            .padding(end = Y_LABEL_GAP),
+        verticalArrangement = Arrangement.SpaceBetween,
+        horizontalAlignment = Alignment.End,
+    ) {
+        Text(
+            text = ChartFormat.compact(domain.max, locale),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+        Text(
+            text = ChartFormat.compact(domain.min, locale),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
     }
 }
 

@@ -22,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.tomasps.virga.core.ui.components.ListRow
 import com.tomasps.virga.core.ui.components.KeyValueRow
+import com.tomasps.virga.core.ui.components.SectionCard
 import com.tomasps.virga.core.ui.components.LoadMoreFooter
 import com.tomasps.virga.core.ui.components.SectionHeader
 import com.tomasps.virga.core.ui.dialogs.ConfirmDialog
@@ -150,14 +151,19 @@ private fun LazyListScope.tableDetailItems(
 private fun SchemaSummary(schema: TableSchema) {
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         SectionHeader(title = stringResource(R.string.d1_columns_title))
-        schema.columns.forEach { column ->
-            val flags = listOfNotNull(
-                if (column.pkPosition > 0) stringResource(R.string.d1_flag_primary_key) else null,
-                if (column.notNull) stringResource(R.string.d1_flag_not_null) else null,
-                column.defaultValue?.let { "${stringResource(R.string.d1_flag_default)} $it" },
-            ).joinToString(", ")
-            KeyValueRow(key = column.name, value = listOfNotNull(column.type.ifBlank { null }, flags.ifBlank { null }).joinToString(" · ").ifBlank { "-" })
+        val columnRows = buildList<@Composable () -> Unit> {
+            schema.columns.forEach { column ->
+                add {
+                    val flags = listOfNotNull(
+                        if (column.pkPosition > 0) stringResource(R.string.d1_flag_primary_key) else null,
+                        if (column.notNull) stringResource(R.string.d1_flag_not_null) else null,
+                        column.defaultValue?.let { "${stringResource(R.string.d1_flag_default)} $it" },
+                    ).joinToString(", ")
+                    KeyValueRow(key = column.name, value = listOfNotNull(column.type.ifBlank { null }, flags.ifBlank { null }).joinToString(" · ").ifBlank { "-" })
+                }
+            }
         }
+        SectionCard(rows = columnRows)
         if (schema.indexes.isNotEmpty()) {
             SectionHeader(title = stringResource(R.string.d1_indexes_title))
             schema.indexes.forEach { index ->

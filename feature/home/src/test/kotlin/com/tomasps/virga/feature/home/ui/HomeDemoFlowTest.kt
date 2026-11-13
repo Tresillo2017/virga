@@ -121,10 +121,17 @@ class HomeDemoFlowTest {
     /** Scrolls Home's list until a node with [text] is on screen. Rows below the fold are not laid out until then. */
     private fun reveal(text: String) = reveal(hasText(text))
 
-    /** Scrolls until a row matching [matcher] is composed. Rows arrive when their call answers, so this waits for them. */
+    /**
+     * Scrolls until a row matching [matcher] is composed and displayed. Rows arrive when their call answers, and a row
+     * that is already on screen can move out again when a later section loads, so this waits for the row to be
+     * displayed, not only for a scroll to succeed.
+     */
     private fun reveal(matcher: SemanticsMatcher) {
         compose.waitUntil(FLOW_WAIT_TIMEOUT_MS) {
-            runCatching { compose.onNodeWithTag(HOME_LIST_TAG).performScrollToNode(matcher) }.isSuccess
+            runCatching {
+                compose.onNodeWithTag(HOME_LIST_TAG).performScrollToNode(matcher)
+                compose.onNode(matcher).assertIsDisplayed()
+            }.isSuccess
         }
     }
 
@@ -578,6 +585,10 @@ class HomeDemoFlowTest {
         home.show(HomeRoot)
         home.shown("Workers · 3")
 
+        // The builds list loads on its own call, so the status dot can arrive after the Workers card does.
+        compose.waitUntil(FLOW_WAIT_TIMEOUT_MS) {
+            compose.onAllNodesWithContentDescription("A build is running").fetchSemanticsNodes().size == 1
+        }
         assertEquals("one Worker is building", 1, compose.onAllNodesWithContentDescription("A build is running").fetchSemanticsNodes().size)
         compose.onAllNodes(hasText("See all") and hasClickAction())[0].performScrollTo().performClick()
 
