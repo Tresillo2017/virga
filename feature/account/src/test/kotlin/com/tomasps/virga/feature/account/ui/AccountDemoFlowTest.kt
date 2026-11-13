@@ -1,5 +1,8 @@
 package com.tomasps.virga.feature.account.ui
 
+import androidx.compose.ui.test.ComposeTimeoutException
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
@@ -159,10 +162,23 @@ class AccountDemoFlowTest {
         val themes = flow.get<ThemeRepository>()
 
         flow.clickText("Dark")
-        compose.waitUntil(THEME_SAVE_TIMEOUT_MS) { runBlocking { themes.mode.first() == ThemeMode.Dark } }
+        awaitSavedTheme(themes, ThemeMode.Dark)
+        // The saved value comes back to the screen through the ViewModel; let that settle before the next tap.
+        compose.waitForIdle()
 
         flow.clickText("Follow system")
-        compose.waitUntil(THEME_SAVE_TIMEOUT_MS) { runBlocking { themes.mode.first() == ThemeMode.System } }
+        awaitSavedTheme(themes, ThemeMode.System)
+    }
+
+    /** Waits for [expected] to be stored, and on timeout says what was stored and what the screen showed. */
+    private fun awaitSavedTheme(themes: ThemeRepository, expected: ThemeMode) {
+        try {
+            compose.waitUntil(THEME_SAVE_TIMEOUT_MS) { runBlocking { themes.mode.first() == expected } }
+        } catch (timeout: ComposeTimeoutException) {
+            val stored = runBlocking { themes.mode.first() }
+            val screen = compose.onRoot().printToString(maxDepth = Int.MAX_VALUE)
+            throw AssertionError("Expected saved theme $expected but it is $stored. Screen:\n$screen", timeout)
+        }
     }
 
     @Test
