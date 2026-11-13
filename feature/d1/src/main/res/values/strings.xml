@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Databases list -->
+    <string name="d1_title_d1root">D1 databases</string>
+    <string name="d1_title_database">Database</string>
+    <string name="d1_list_empty_title">No databases yet</string>
+    <string name="d1_list_empty_message">Create a database to store relational data for your Workers.</string>
+    <string name="d1_create_database">Create database</string>
+    <string name="d1_create_title">Create database</string>
+    <string name="d1_create_name_label">Name</string>
+    <string name="d1_create_name_required">Enter a name for the database.</string>
+    <string name="d1_create_action">Create</string>
+    <string name="d1_jurisdiction_label">Jurisdiction</string>
+    <string name="d1_location_label">Primary location hint</string>
+    <string name="d1_default_option">Default</string>
+    <string name="d1_jurisdiction_permanent_note">The jurisdiction cannot be changed after the database is created.</string>
+    <string name="d1_jurisdiction_default">Default</string>
+    <string name="d1_jurisdiction_eu">EU</string>
+    <string name="d1_jurisdiction_fedramp">FedRAMP</string>
+    <string name="d1_jurisdiction_us">US</string>
+    <string name="d1_location_wnam">Western North America</string>
+    <string name="d1_location_enam">Eastern North America</string>
+    <string name="d1_location_weur">Western Europe</string>
+    <string name="d1_location_eeur">Eastern Europe</string>
+    <string name="d1_location_apac">Asia-Pacific</string>
+    <string name="d1_location_oc">Oceania</string>
+    <string name="d1_database_actions">Actions for %1$s</string>
+    <string name="d1_delete_action">Delete</string>
+    <string name="d1_delete_title">Delete database</string>
+    <string name="d1_delete_message">Deleting %1$s removes its data. Type the database name to confirm.</string>
+    <string name="d1_ok">OK</string>
+    <string name="d1_cancel">Cancel</string>
+    <string name="d1_retry">Try again</string>
+    <string name="d1_refresh">Refresh</string>
+    <string name="d1_unknown">Unknown</string>
+    <string name="d1_bookmark_label">Bookmark</string>
+
+    <!-- Database tabs -->
+    <string name="d1_tab_tables">Tables</string>
+    <string name="d1_tab_console">Console</string>
+    <string name="d1_tab_time_travel">Time Travel</string>
+    <string name="d1_tab_export">Export</string>
+    <string name="d1_tab_settings">Settings</string>
+    <string name="d1_tab_metrics">Metrics</string>
+
+    <!-- Facts shared by the header and settings -->
+    <string name="d1_fact_name">Name</string>
+    <string name="d1_fact_uuid">Database ID</string>
+    <string name="d1_fact_created">Created</string>
+    <string name="d1_fact_size">Size</string>
+    <string name="d1_fact_jurisdiction">Jurisdiction</string>
+    <string name="d1_fact_version">Storage version</string>
+
+    <!-- Tables -->
+    <string name="d1_tables_title">Tables</string>
+    <string name="d1_tables_empty_title">No tables</string>
+    <string name="d1_tables_empty_message">Create a table in the console to see it here.</string>
+    <string name="d1_all_tables">All tables</string>
+    <string name="d1_columns_title">Columns</string>
+    <string name="d1_indexes_title">Indexes</string>
+    <string name="d1_foreign_keys_title">Foreign keys</string>
+    <string name="d1_flag_primary_key">primary key</string>
+    <string name="d1_flag_not_null">not null</string>
+    <string name="d1_flag_default">default</string>
+    <string name="d1_flag_unique">unique</string>
+    <string name="d1_browse_only_note">This table has no primary key, so its rows can be browsed but not changed here.</string>
+    <string name="d1_row_insert">Insert row</string>
+    <string name="d1_rows_empty_title">No rows</string>
+    <string name="d1_rows_empty_message">This table has no rows yet.</string>
+    <string name="d1_row_actions_title">Row</string>
+    <string name="d1_row_actions_message">Edit or delete this row.</string>
+    <string name="d1_row_edit">Edit</string>
+    <string name="d1_row_delete">Delete</string>
+    <string name="d1_row_insert_title">Insert row</string>
+    <string name="d1_row_edit_title">Edit row</string>
+    <string name="d1_row_review">Review statement</string>
+    <string name="d1_cell_null">NULL</string>
+    <string name="d1_statement_values">Values bound to the placeholders, in order:</string>
+    <string name="d1_cell_set_null">Set NULL</string>
+    <string name="d1_run_statement">Run</string>
+    <string name="d1_write_insert_title">Insert this row?</string>
+    <string name="d1_write_update_title">Save this change?</string>
+    <string name="d1_write_delete_title">Delete this row?</string>
+
+    <!-- Console -->
+    <string name="d1_console_input_label">SQL</string>
+    <string name="d1_console_run">Run</string>
+    <string name="d1_console_summary">Rows read: %1$d · rows written: %2$d</string>
+    <string name="d1_console_duration">%1$d ms</string>
+    <string name="d1_console_truncated">Showing the first %1$d of %2$d rows.</string>
+    <string name="d1_console_batch_note">The batch ran %1$d statements. The grid shows the first result; the counts above cover all of them.</string>
+    <string name="d1_console_history_title">Recent queries on this device</string>
+    <string name="d1_console_history_empty">Queries you run here are kept on this device only.</string>
+    <string name="d1_console_history_clear">Clear history</string>
+    <string name="d1_risk_title">Run this statement?</string>
+    <string name="d1_risk_message">These statements can change or remove data.</string>
+    <string name="d1_risk_run">Run anyway</string>
+    <string name="d1_risk_drop">drops objects</string>
+    <string name="d1_risk_alter">changes a table</string>
+    <string name="d1_risk_delete_no_where">DELETE without WHERE</string>
+    <string name="d1_risk_update_no_where">UPDATE without WHERE</string>
+
+    <!-- Time Travel -->
+    <string name="d1_time_travel_current">Current bookmark</string>
+    <string name="d1_time_travel_intro">Time Travel keeps the database history for up to 30 days on paid plans and 7 days on free plans.</string>
+    <string name="d1_time_travel_lookup">Bookmark for a time</string>
+    <string name="d1_time_travel_timestamp_label">Time (ISO 8601, for example 2026-11-10T08:00:00Z)</string>
+    <string name="d1_time_travel_timestamp_hint">Use a UTC time or include an offset.</string>
+    <string name="d1_time_travel_lookup_action">Look up</string>
+    <string name="d1_time_travel_restore_timestamp">Restore to this time</string>
+    <string name="d1_time_travel_restore_bookmark">Restore to this bookmark</string>
+    <string name="d1_time_travel_undo">Undo last restore</string>
+    <string name="d1_restore_title">Restore database</string>
+    <string name="d1_restore_message">Restoring %1$s overwrites all data in the database and cancels queries in progress. Type the database name to confirm.</string>
+    <string name="d1_restore_confirm">Restore</string>
+    <string name="d1_restore_target_bookmark">bookmark %1$s</string>
+    <string name="d1_restore_target_timestamp">the time %1$s</string>
+    <string name="d1_error_timestamp_title">Invalid time</string>
+    <string name="d1_error_timestamp_message">Enter a time in ISO 8601 form, such as 2026-11-10T08:00:00Z.</string>
+
+    <!-- Export -->
+    <string name="d1_export_title">Export SQL dump</string>
+    <string name="d1_export_intro">The export creates an SQL file you can download. It can take a while for large databases.</string>
+    <string name="d1_export_unavailable_warning">The database cannot answer queries while an export runs. Stopping the wait cancels the export.</string>
+    <string name="d1_export_structure_only">Structure only</string>
+    <string name="d1_export_data_only">Data only</string>
+    <string name="d1_export_start">Start export</string>
+    <string name="d1_export_running">Exporting (%1$s)</string>
+    <string name="d1_export_status_starting">starting</string>
+    <string name="d1_export_status_in_progress">in progress</string>
+    <string name="d1_export_stop">Stop waiting</string>
+    <string name="d1_export_ready">Export ready: %1$s</string>
+    <string name="d1_export_download">Download</string>
+    <string name="d1_export_done">Done</string>
+
+    <!-- Settings -->
+    <string name="d1_settings_replication_title">Read replication</string>
+    <string name="d1_settings_replication_note">Turning replication off can take up to 24 hours to take effect.</string>
+    <string name="d1_replication_auto">Automatic</string>
+    <string name="d1_replication_disabled">Disabled</string>
+    <string name="d1_settings_rename_title">Name</string>
+    <string name="d1_settings_rename_action">Rename in dashboard</string>
+    <string name="d1_settings_rename_description">The API cannot rename a database.</string>
+    <string name="d1_settings_danger_title">Danger zone</string>
+    <string name="d1_settings_delete">Delete database</string>
+
+    <!-- Metrics -->
+    <string name="d1_metrics_title">Last %1$d days</string>
+    <string name="d1_metrics_queries">Queries</string>
+    <string name="d1_metrics_rows_read">Rows read</string>
+    <string name="d1_metrics_rows_written">Rows written</string>
+    <string name="d1_metrics_storage">Largest size</string>
+    <string name="d1_metrics_series_reads">Rows read</string>
+    <string name="d1_metrics_series_writes">Rows written</string>
+    <string name="d1_metrics_chart_title">Rows per day</string>
+    <string name="d1_metrics_chart_description">Rows read and written per day over %1$d days.</string>
+    <string name="d1_metrics_insights_title">Query insights</string>
+    <string name="d1_metrics_insights_description">Query text and slow queries are shown in the dashboard.</string>
+
+    <!-- Errors -->
+    <string name="d1_error_limit_title">The request took too long</string>
+    <string name="d1_error_limit_message">D1 stops requests that run longer than 30 seconds. Try a smaller query.</string>
+    <string name="d1_error_result_too_large_title">The result is too large</string>
+    <string name="d1_error_result_too_large_message">Results over 50 MB are refused. Select fewer columns or use LIMIT.</string>
+    <string name="d1_error_export_timeout_title">The export did not finish</string>
+    <string name="d1_error_export_timeout_message">Try the export again. Large databases can take longer than the wait allows.</string>
+    <string name="d1_error_export_link_title">The download link is not valid</string>
+    <string name="d1_error_export_link_message">Start the export again to get a new link.</string>
+    <string name="d1_error_row_key_title">This row cannot be changed</string>
+    <string name="d1_error_row_key_message">The row has no primary key value, so it cannot be identified safely.</string>
+    <string name="d1_recently_deleted_title">Recently deleted</string>
+    <string name="d1_recently_deleted_message">Databases deleted from this device can be restored until the deadline shown.</string>
+    <string name="d1_recently_deleted_row">Restore until %1$s</string>
+    <string name="d1_restore_action">Restore</string>
+    <string name="d1_error_row_not_editable_title">This row is read-only</string>
+    <string name="d1_error_row_not_editable_message">It holds arrays or objects, and writing their text back could change the stored value. Use the SQL console instead.</string>
+    <string name="d1_error_write_unconfirmed_title">The change may have been applied</string>
+    <string name="d1_error_write_unconfirmed_message">The database did not answer within 30 seconds. The change might still have run. Reload the table to check before trying again.</string>
+</resources>

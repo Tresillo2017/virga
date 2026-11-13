@@ -1,0 +1,91 @@
+# Virga
+
+Virga is an unofficial native Android client for Cloudflare. It lets you check and act on your Cloudflare account from a phone: Workers and Workers Builds, Pages, DNS and zones, R2, D1 and KV, with analytics for each.
+
+Virga is not affiliated with, endorsed by, or sponsored by Cloudflare, Inc. Cloudflare, the Cloudflare logo and Cloudflare Workers are trademarks of Cloudflare, Inc.
+
+## Status
+
+Pre-release. Version 0.1.0 (`versionName`), not yet published. Built and tested on an Android emulator. Not yet tested against a real production account with a least-privilege token. See `docs/release-checklist.md` for what is left before a Play Store release.
+
+## Features by product
+
+| Area | What you can do |
+|---|---|
+| Home | Account analytics for a 1h, 6h, 24h, 7d or 30d window (requests, cache hit rate, Worker invocations and errors, CPU time), search across products, a "Building now" card, shortcuts. Switch between accounts. |
+| Compute (Workers) | List Workers; overview with active deployment and bindings; metrics; deployments and rollback; logs; custom domains; settings (variables, secrets, delete with typed-name confirmation). |
+| Compute (Workers Builds) | Build history and detail, live logs, trigger and cancel builds, build configuration. **Watch build** pins a running build to an Android Live Update (or an ongoing notification before Android 16). |
+| Compute (Pages) | Projects, deployments and their logs, retry, domains, production branch and environment variables, delete with typed-name confirmation. |
+| Domains | Zones with filters; zone overview and analytics; pause, development mode and cache purge; DNS records (search, add, edit, bulk delete, proxy toggle); DNS settings (DNSSEC, BIND export and import). |
+| Storage: R2 | Buckets, object browser (folders, upload, download, delete), bucket settings (public access, custom domains, CORS, bucket lock, lifecycle), metrics. |
+| Storage: D1 | Databases, table browser, row editing, SQL console, time travel, export, metrics. |
+| Storage: KV | Namespaces, keys and values (text, JSON, hex preview), expiration and metadata, bulk import and delete, metrics. |
+| Account | Sign in, switch accounts, settings, About. |
+
+## What the API cannot do
+
+Some things are not available through the Cloudflare API, or are only partly available. Virga does not fake them. Where a feature is not in the API, the screen shows an **Open in dashboard** row that opens the Cloudflare dashboard in the browser. Examples:
+
+- Changing zone mode (DNS only or CDN only) and nameservers: the app shows these read-only and links to the dashboard for changes.
+- Connecting a Git repository to Workers Builds, and similar setup steps the API does not expose.
+- Registrar actions such as domain renewal.
+- Anything else the API does not serve is listed with the dashboard link rather than silently omitted.
+
+Some endpoints are beta. Responses are parsed defensively: unknown fields are ignored and optional fields are nullable.
+
+## Build and run
+
+Requirements: Android Studio with JDK 17, Android SDK platform 37, and a device or emulator running Android 9 (API 28) or newer. Notifications for Live Update need Android 16 (API 36) or newer; below that the app uses an ordinary ongoing notification.
+
+```sh
+./gradlew :app:installDebug          # install the debug build
+./gradlew testDebugUnitTest          # unit tests for every module
+./gradlew koverXmlReport             # coverage (XML under each module's build/reports/kover)
+./gradlew lintDebug                  # Android Lint
+./gradlew assembleRelease            # minified release APK (unsigned; see the release checklist)
+```
+
+The release build uses R8 with rules in `app/proguard-rules.pro`. It is unsigned in the repository. The owner adds a signing configuration outside the repo.
+
+## Demo account
+
+On the sign-in screen, choose **Explore the demo**. No token is needed. The demo account serves canned responses from `core:network`'s demo engine, and each feature contributes its own routes. Writes in demo mode update in-memory state where that is cheap, and otherwise return a success response. The demo has two accounts (personal and staging), and the Pages, Workers, Domains, R2, D1 and KV screens all have seeded data. Demo requests are logged under the `VirgaDemo` logcat tag when no route matches.
+
+Demo data is invented. Hostnames such as `example.com` and `lantern-docs` are placeholders.
+
+## Sign-in and privacy
+
+- Sign-in uses a Cloudflare API token that you paste. Virga checks it on entry (`/user/tokens/verify`), then reads your accounts.
+- The token is encrypted with AES-GCM using a non-exportable Android Keystore key. The ciphertext is stored in DataStore. The token is never shown again after entry.
+- The token is sent only in the `Authorization` header, and only to `https://api.cloudflare.com`. It is never logged, exported or sent anywhere else.
+- No analytics, crash reporting or advertising SDKs. Virga has no server of its own.
+- Backups are off (`allowBackup="false"`), and backup and device-transfer rules exclude the credential store.
+- Permissions: `INTERNET`; `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC` and `POST_PROMOTED_NOTIFICATIONS` for the Watch build service and its Live Update.
+
+## Module map
+
+```
+:app                    MainActivity, splash, navigation host, bottom bar, Koin start, demo wiring
+:core:common            Result and error types, dispatchers, formatters
+:core:network           CloudflareApi (REST envelope), GraphQL client, pagination, rate limiting, demo engine
+:core:auth              credential vault, session, account selection
+:core:navigation        Navigator, route-key base types, cross-feature route keys
+:core:ui                theme, components, charts (Compose Canvas), confirmation dialogs, state scaffolds
+:feature:account        sign-in, account switcher, settings, About
+:feature:home           account home: analytics, search, building-now card
+:feature:workers        Worker list and detail
+:feature:builds         Workers Builds, watch service, Live Update
+:feature:pages          Pages projects, deployments, domains, settings
+:feature:domains        zones, zone overview, DNS records and settings
+:feature:r2             buckets, objects, bucket settings, metrics
+:feature:d1             databases, SQL console, table browser, time travel, export, metrics
+:feature:kv             namespaces, keys, values, bulk operations, metrics
+```
+
+Feature modules depend only on `core:*`. Cross-feature links go through route keys in `core:navigation`. See `docs/architecture.md` and `docs/feature-module-guide.md`.
+
+## Testing
+
+- Unit tests use Ktor `MockEngine` (through `mockCloudflareApi`), `kotlinx-coroutines-test` and Turbine.
+- Demo routes are tested through the same repositories the screens use.
+- Coverage target is 80% for non-UI code. Current numbers are in the build report of the final verification.

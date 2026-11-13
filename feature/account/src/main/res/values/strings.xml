@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Demo account names, shown as account names in demo mode -->
+    <string name="account_demo_name_personal">Demo account</string>
+    <string name="account_demo_name_staging">Demo staging</string>
+
+    <!-- Sign-in -->
+    <string name="account_sign_in_tagline">Unofficial client for Cloudflare</string>
+    <string name="account_sign_in_intro">Paste a Cloudflare API token. Virga checks it with Cloudflare, then keeps it encrypted on this device. The token is sent only to api.cloudflare.com.</string>
+    <string name="account_sign_in_token_label">API token</string>
+    <string name="account_sign_in_show_token">Show token</string>
+    <string name="account_sign_in_hide_token">Hide token</string>
+    <string name="account_sign_in_verify">Verify and sign in</string>
+    <string name="account_sign_in_demo">Explore the demo</string>
+    <string name="account_sign_in_demo_hint">The demo uses sample data. You do not need a token.</string>
+    <string name="account_sign_in_empty_title">Paste a token first</string>
+    <string name="account_sign_in_empty_message">Create an API token, copy it, and paste it into the field.</string>
+
+    <!-- Token guidance -->
+    <string name="account_guidance_title">How to create a token</string>
+    <string name="account_guidance_permissions_heading">Permissions for full use</string>
+    <string name="account_guidance_read_only_heading">Read-only variant: view everything, change nothing</string>
+    <string name="account_guidance_caution">Names follow Cloudflare\'s permissions reference and may change. Give only what you need. Start with the read-only list if you are unsure.</string>
+    <string name="account_guidance_builds_note">Workers Builds needs a user token. Create it under My Profile, then API Tokens. An account-owned token is refused by the Builds API (\"Invalid token\").</string>
+    <string name="account_guidance_r2_note">R2 object browsing, upload and delete need an R2 API token with Admin Read and Write, made in the R2 dashboard. The permissions above cover buckets and settings only.</string>
+    <string name="account_guidance_open_page">Open the API tokens page</string>
+    <string-array name="account_guidance_steps">
+        <item>1. Open the API tokens page in your browser and choose Create Token.</item>
+        <item>2. Start from a custom token. Give it a name you will recognise.</item>
+        <item>3. Add the permissions below, choose the accounts and zones, then create the token.</item>
+        <item>4. Copy the token. Cloudflare shows it once. Paste it here.</item>
+    </string-array>
+    <string-array name="account_guidance_permissions">
+        <item>Account Settings: Read (lists your accounts)</item>
+        <item>Zone: Read and Zone: Edit (list, create, delete and pause zones)</item>
+        <item>Zone Settings: Edit (development mode)</item>
+        <item>Cache Purge: Purge (purge a zone\'s cache)</item>
+        <item>DNS: Edit (records, import and export, DNSSEC)</item>
+        <item>Workers Routes: Edit (Worker routes on a zone)</item>
+        <item>Workers Scripts: Edit (Workers, versions, deployments, secrets, custom domains)</item>
+        <item>Workers CI: Edit (Workers Builds: builds, triggers, build settings, cancel)</item>
+        <item>Pages: Edit (Pages projects, deployments and domains)</item>
+        <item>Workers R2 Storage: Edit (R2 buckets, CORS, lifecycle, lock and custom domains)</item>
+        <item>D1: Edit (databases, SQL, export and time travel)</item>
+        <item>Workers KV Storage: Edit (KV namespaces and keys)</item>
+        <item>Account Analytics: Read (Worker and KV analytics)</item>
+        <item>Zone: Analytics Read (zone traffic)</item>
+        <item>Registrar Domains: Read (registrar details on zones)</item>
+    </string-array>
+    <string-array name="account_guidance_read_only_permissions">
+        <item>Account Settings: Read</item>
+        <item>Zone: Read and Zone: Analytics Read</item>
+        <item>Zone Settings: Read</item>
+        <item>DNS: Read</item>
+        <item>Workers Routes: Read</item>
+        <item>Workers Scripts: Read</item>
+        <item>Workers CI: Read</item>
+        <item>Pages: Read</item>
+        <item>Workers R2 Storage: Read</item>
+        <item>D1: Read</item>
+        <item>Workers KV Storage: Read</item>
+        <item>Account Analytics: Read</item>
+        <item>Registrar Domains: Read</item>
+    </string-array>
+
+    <!-- Account tab -->
+    <string name="account_tab_title">Account</string>
+    <string name="account_no_account">No account selected</string>
+    <string name="account_demo_badge">Demo account, sample data</string>
+    <plurals name="account_count">
+        <item quantity="one">%d account</item>
+        <item quantity="other">%d accounts</item>
+    </plurals>
+    <string name="account_loading">Loading account details</string>
+    <string name="account_detail_id">Account ID</string>
+    <string name="account_detail_type">Type</string>
+    <string name="account_detail_created">Created</string>
+    <string name="account_switch">Switch account</string>
+    <string name="account_settings">Settings</string>
+    <string name="account_about">About Virga</string>
+
+    <!-- Switcher -->
+    <string name="account_switcher_title">Switch account</string>
+    <string name="account_switcher_empty_title">No accounts</string>
+    <string name="account_switcher_empty_message">This token cannot see any Cloudflare accounts.</string>
+    <string name="account_selected">Selected</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_session">Session</string>
+    <string name="settings_sign_out">Sign out</string>
+    <string name="settings_sign_out_supporting">Removes the token and cached accounts from this device</string>
+    <string name="settings_sign_out_title">Sign out of Virga?</string>
+    <string name="settings_sign_out_message">The token is deleted from this device. You will need to paste it again to sign in. Nothing is revoked at Cloudflare.</string>
+    <string name="settings_sign_out_confirm">Sign out</string>
+    <string name="settings_cancel">Cancel</string>
+
+    <!-- About -->
+    <string name="about_title">About Virga</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_not_affiliated">Virga is not affiliated with, endorsed by, or sponsored by Cloudflare, Inc.</string>
+    <string name="about_trademark">Cloudflare, the Cloudflare logo, and Cloudflare Workers are trademarks and/or registered trademarks of Cloudflare, Inc.</string>
+</resources>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Virga</string>
+
+    <string name="tab_home">Home</string>
+    <string name="tab_compute">Compute</string>
+    <string name="tab_domains">Domains</string>
+    <string name="tab_storage">Storage</string>
+    <string name="tab_account">Account</string>
+
+    <string name="hub_compute_title">Compute</string>
+    <string name="hub_compute_workers">Workers</string>
+    <string name="hub_compute_workers_supporting">Scripts, deployments and Workers Builds</string>
+    <string name="hub_compute_pages">Pages</string>
+    <string name="hub_compute_pages_supporting">Projects and deployments</string>
+
+    <string name="hub_storage_title">Storage</string>
+    <string name="hub_storage_r2">R2</string>
+    <string name="hub_storage_r2_supporting">Object storage buckets</string>
+    <string name="hub_storage_d1">D1</string>
+    <string name="hub_storage_d1_supporting">SQL databases</string>
+    <string name="hub_storage_kv">KV</string>
+    <string name="hub_storage_kv_supporting">Key-value namespaces</string>
+</resources>

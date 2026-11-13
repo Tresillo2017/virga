@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Actions and labels -->
+    <string name="builds_action_cancel_build">Cancel build</string>
+    <string name="builds_action_configuration">Build settings</string>
+    <string name="builds_action_edit">Edit</string>
+    <string name="builds_action_save">Save</string>
+    <string name="builds_action_stop_watching">Stop watching</string>
+    <string name="builds_notification_action_stop">Stop</string>
+    <string name="builds_action_watch">Watch build</string>
+    <string name="builds_build_id">Build ID</string>
+    <string name="builds_cancel">Cancel</string>
+    <string name="builds_cancel_keep">Keep building</string>
+    <string name="builds_cancel_confirm">Cancel build</string>
+    <string name="builds_cancel_failed">Could not cancel the build. Try again.</string>
+    <string name="builds_cancel_message">The build stops and cannot be resumed. Its log is kept.</string>
+    <string name="builds_cancel_requested">Cancel requested.</string>
+    <string name="builds_cancel_title">Cancel this build?</string>
+
+    <!-- Notification channels and text -->
+    <string name="builds_channel_ongoing_name">Build watch (ongoing)</string>
+    <string name="builds_channel_result_name">Build results</string>
+    <string name="builds_notification_title">Build of %1$s</string>
+    <string name="builds_notification_title_many">%1$d builds watched</string>
+    <string name="builds_summary_line">%1$s: %2$s</string>
+    <string name="builds_result_canceled">Build cancelled.</string>
+    <string name="builds_result_expired">Stopped watching after 2 hours. Open the build to check it.</string>
+    <string name="builds_result_failed">Build failed.</string>
+    <string name="builds_result_finished">Build finished.</string>
+    <string name="builds_result_lost">Lost access to this build. Watching stopped.</string>
+    <string name="builds_result_paused">Android paused the watch. Open the build to resume it.</string>
+    <string name="builds_result_skipped">Build skipped because a newer build replaced it.</string>
+    <string name="builds_result_succeeded">Build succeeded.</string>
+
+    <!-- Notification permission rationale -->
+    <string name="builds_notifications_rationale_allow">Allow</string>
+    <string name="builds_notifications_rationale_message">Virga shows build progress in a notification while you watch a build, and tells you when it finishes. Without this permission the build is still watched, but the notification may stay hidden.</string>
+    <string name="builds_notifications_rationale_skip">Not now</string>
+    <string name="builds_notifications_rationale_title">Show build progress?</string>
+
+    <!-- Live Updates settings shortcut -->
+    <string name="builds_live_updates_off">Live Updates are off</string>
+    <string name="builds_live_updates_off_description">Turn on Live Updates for Virga so watched builds show in the status bar.</string>
+
+    <!-- Stages and outcomes -->
+    <string name="builds_stage_done">Done</string>
+    <string name="builds_stage_done_short">Done</string>
+    <string name="builds_stage_initializing">Initializing</string>
+    <string name="builds_stage_initializing_short">Init</string>
+    <string name="builds_stage_not_started">Not started</string>
+    <string name="builds_stage_queued">Queued</string>
+    <string name="builds_stage_queued_short">Queued</string>
+    <string name="builds_stage_running">Running</string>
+    <string name="builds_stage_running_short">Running</string>
+    <string name="builds_stage_unknown">Unknown</string>
+    <string name="builds_outcome_canceled">Cancelled</string>
+    <string name="builds_outcome_fail">Failed</string>
+    <string name="builds_outcome_finished">Finished</string>
+    <string name="builds_outcome_skipped">Skipped</string>
+    <string name="builds_outcome_success">Succeeded</string>
+
+    <!-- Time -->
+    <string name="builds_time_days_ago">%1$d d ago</string>
+    <string name="builds_time_hours_ago">%1$d h ago</string>
+    <string name="builds_time_minutes_ago">%1$d min ago</string>
+    <string name="builds_time_now">Just now</string>
+
+    <!-- History -->
+    <string name="builds_history_empty_message">Builds from the last 90 days appear here.</string>
+    <string name="builds_history_empty_title">No builds yet</string>
+    <string name="builds_untitled_build">Untitled build %1$s</string>
+
+    <!-- Detail and log -->
+    <string name="builds_log_finished">Build finished. Log complete.</string>
+    <string name="builds_log_jump_latest">Jump to latest</string>
+    <string name="builds_log_title">Log</string>
+    <string name="builds_watch_started">Watching this build.</string>
+    <string name="builds_watch_stopped">Stopped watching.</string>
+    <string name="builds_trigger_title">Start a build</string>
+    <string name="builds_trigger_branch_label">Branch</string>
+    <string name="builds_trigger_commit_label">Commit hash</string>
+    <string name="builds_trigger_by_branch">By branch</string>
+    <string name="builds_trigger_by_commit">By commit</string>
+    <string name="builds_trigger_start">Start build</string>
+    <string name="builds_start_confirm_action">Start</string>
+    <string name="builds_trigger_none">No build trigger is set up for this Worker. Connect a repository first.</string>
+    <string name="builds_trigger_requested">Build started.</string>
+    <string name="builds_trigger_failed">Could not start the build. Try again.</string>
+    <string name="builds_trigger_needs_value">Enter a branch or a commit hash.</string>
+    <string name="builds_copy_log">Copy log</string>
+    <string name="builds_share_log">Share log</string>
+    <string name="builds_log_copied">Log copied.</string>
+    <string name="builds_log_share_title">Build log</string>
+    <string name="builds_load_failed">Could not load the build.</string>
+
+    <!-- Configuration -->
+    <string name="builds_config_build_settings">Build settings</string>
+    <string name="builds_config_edit_title">Edit build settings</string>
+    <string name="builds_config_not_connected">This Worker is not connected to a Git repository. Connect it in the dashboard.</string>
+    <string name="builds_config_previews">Previews</string>
+    <string name="builds_config_repository">Repository</string>
+    <string name="builds_config_title">Build configuration</string>
+    <string name="builds_config_saved">Build settings saved.</string>
+    <string name="builds_config_branch_required">Enter a production branch.</string>
+    <string name="builds_preview_untitled">Untitled preview</string>
+    <string name="builds_config_save_failed">Could not save the build settings. Try again.</string>
+    <string name="builds_dashboard_connect_description">Connecting a repository needs a GitHub or GitLab authorisation that this app cannot do.</string>
+    <string name="builds_dashboard_connect_label">Open in dashboard</string>
+    <string name="builds_field_author">Author</string>
+    <string name="builds_field_branch">Branch</string>
+    <string name="builds_field_build_command">Build command</string>
+    <string name="builds_field_commit">Commit</string>
+    <string name="builds_field_deploy_command">Deploy command</string>
+    <string name="builds_field_owner">Owner</string>
+    <string name="builds_field_previews">Preview builds</string>
+    <string name="builds_field_production_branch">Production branch</string>
+    <string name="builds_field_repo">Repository</string>
+    <string name="builds_field_root_directory">Root directory</string>
+    <string name="builds_preview_auto_off">Auto build off</string>
+    <string name="builds_preview_auto_on">Auto build on</string>
+    <string name="builds_previews_empty">No previews for this Worker.</string>
+    <string name="builds_value_none">None</string>
+    <string name="builds_value_off">Off</string>
+    <string name="builds_value_on">On</string>
+    <string name="builds_action_open_build">Open build</string>
+    <string name="builds_start_confirm_title">Start this build?</string>
+    <string name="builds_start_confirm_message">Start a build of %1$s. If its trigger deploys to production, the live version is replaced when the build succeeds.</string>
+    <string name="builds_target_branch">branch %1$s</string>
+    <string name="builds_target_commit">commit %1$s</string>
+    <string name="builds_trigger_load_failed">Could not load build triggers. Open this again to retry.</string>
+    <string name="builds_trigger_loading">Loading build triggers…</string>
+    <string name="builds_error_user_token">The Builds API needs a user API token. Account tokens are refused with “Invalid token”.</string>
+</resources>

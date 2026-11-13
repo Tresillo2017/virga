@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Watch build service. Started only from a Watch tap while the app is visible. Permissions are in :app. -->
+    <application>
+        <service
+            android:name=".watch.BuildWatchService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+    </application>
+
+</manifest>

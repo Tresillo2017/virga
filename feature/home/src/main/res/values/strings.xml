@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_title_homeroot">Home</string>
+    <string name="home_no_account">No account selected</string>
+    <string name="home_account_unnamed">Unnamed account</string>
+    <string name="home_no_value">—</string>
+    <string name="home_range_description">Time range: %1$s</string>
+
+    <string name="home_search_placeholder">Search Workers, zones, Pages, R2, D1 and KV</string>
+    <string name="home_search_no_results">No matches for “%1$s”</string>
+    <string name="home_search_source_permission">%1$s needs the %2$s permission</string>
+    <string name="home_search_source_failed">%1$s could not be loaded</string>
+    <string name="home_source_workers">Workers</string>
+    <string name="home_source_zones">Zones</string>
+    <string name="home_source_pages">Pages projects</string>
+    <string name="home_source_r2">R2 buckets</string>
+    <string name="home_source_d1">D1 databases</string>
+    <string name="home_source_kv">KV namespaces</string>
+
+    <string name="home_section_analytics">Analytics</string>
+    <string name="home_analytics_sampled">Sampled, delayed estimates from the GraphQL Analytics API. Not for billing.</string>
+    <string name="home_analytics_no_comparison">No previous period is compared for ranges longer than 7 days.</string>
+    <string name="home_analytics_zones_coverage">Across %1$d of %2$d zones</string>
+    <string name="home_analytics_no_zones">This account has no zones, so zone tiles are empty.</string>
+    <string name="home_analytics_no_workers">This account has no Workers yet.</string>
+    <string name="home_analytics_rate_limited">The analytics rate limit is reached. Try again in a few minutes.</string>
+    <string name="home_analytics_failed">Analytics could not be loaded.</string>
+    <string name="home_analytics_partial">Some data was missing or capped, so totals and changes may be incomplete.</string>
+    <string name="home_analytics_top_approximate">Some Worker request counts are approximate: the account has more Workers than could be ranked.</string>
+    <string name="home_analytics_missing_permission">Missing permission: %1$s. Add it to this token to see these numbers.</string>
+    <string name="home_tile_requests">Requests</string>
+    <string name="home_tile_cache_hit">Cache hit rate</string>
+    <string name="home_tile_invocations">Worker invocations</string>
+    <string name="home_tile_errors">Worker errors</string>
+    <string name="home_tile_cpu_p50">CPU time P50</string>
+    <string name="home_tile_cpu_p99">CPU time P99</string>
+    <string name="home_delta_vs_previous">%1$s vs previous period</string>
+    <string name="home_delta_points">%1$s points vs previous period</string>
+    <string name="home_unit_ms">%1$s ms</string>
+    <string name="home_cpu_info_description">About CPU time percentiles</string>
+    <string name="home_cpu_info_title">Why no P90?</string>
+    <string name="home_cpu_info_message">The Analytics API documents P50 and P99 for Worker CPU time, not P90. Virga shows those two rather than estimate a P90.</string>
+    <string name="home_dismiss">OK</string>
+    <string name="home_build_minutes_title">Build minutes</string>
+    <string name="home_build_minutes_description">The API documents no usage figure for build minutes. Check the dashboard.</string>
+
+    <string name="home_section_building">Building now</string>
+    <string name="home_build_none">Nothing is building right now.</string>
+    <string name="home_build_watch">Watch</string>
+    <string name="home_build_watch_description">Watch %1$s</string>
+    <string name="home_build_watching">Watching</string>
+    <string name="home_build_stop_watching">Stop watching</string>
+    <string name="home_build_stop_watching_description">Stop watching %1$s</string>
+    <string name="home_build_subtitle">%1$s · %2$s</string>
+    <string name="home_build_status_running">Running</string>
+    <string name="home_build_status_queued">Queued</string>
+    <string name="home_build_status_starting">Starting</string>
+    <string name="home_build_status_stopped">Stopped</string>
+    <string name="home_build_status_unknown">Unknown</string>
+    <string name="home_watch_rationale_title">Get updates on this build?</string>
+    <string name="home_watch_rationale_message">Virga can post a notification while the build runs. If you say not now, the build is still watched and you just get no notifications.</string>
+    <string name="home_watch_rationale_confirm">Continue</string>
+    <string name="home_watch_rationale_dismiss">Not now</string>
+
+    <string name="home_section_workers">Workers</string>
+    <string name="home_section_with_count">%1$s · %2$d</string>
+    <string name="home_see_all">See all</string>
+    <string name="home_workers_none">No Workers in this account yet.</string>
+    <string name="home_worker_building">A build is running</string>
+    <string name="home_no_traffic">No requests in this range</string>
+    <string name="home_section_domains">Domains</string>
+    <string name="home_domains_none">No domains in this account yet.</string>
+    <string name="home_domain_status_requests">%1$s · %2$s requests</string>
+    <string name="home_shortcut_requests">%1$s requests</string>
+
+    <string name="home_zone_status_active">Active</string>
+    <string name="home_zone_status_pending">Pending setup</string>
+    <string name="home_zone_status_initializing">Setting up</string>
+    <string name="home_zone_status_moved">Moved</string>
+    <string name="home_zone_status_deactivated">Deactivated</string>
+    <string name="home_zone_status_unknown">Status unknown</string>
+</resources>

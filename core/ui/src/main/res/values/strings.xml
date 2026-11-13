@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="core_ui_brand_name">Virga</string>
+    <string name="core_ui_logo_description">Virga logo</string>
+    <string name="core_ui_retry">Retry</string>
+    <string name="core_ui_loading">Loading</string>
+    <string name="core_ui_back">Back</string>
+    <string name="core_ui_error_title_default">Something went wrong</string>
+    <string name="core_ui_error_message_default">The request did not complete. Check your connection and try again.</string>
+    <string name="core_ui_open_in_dashboard">Open in dashboard</string>
+    <string name="core_ui_open">Open</string>
+    <string name="core_ui_confirm">Confirm</string>
+    <string name="core_ui_cancel">Cancel</string>
+    <string name="core_ui_search">Search</string>
+    <string name="core_ui_search_clear">Clear search</string>
+    <string name="core_ui_no_data">No data</string>
+    <string name="core_ui_chart_empty">%1$s: no data</string>
+    <string name="core_ui_chart_summary_line">%1$s: %2$s, latest %3$s, lowest %4$s, highest %5$s</string>
+    <string name="core_ui_chart_summary_bars">%1$s: %2$s, largest %3$s at %4$s</string>
+    <string name="core_ui_chart_summary_stacked">%1$s: %2$s, segments: %3$s</string>
+    <string name="core_ui_type_to_confirm">Type %1$s to confirm</string>
+    <string name="core_ui_status_success">Healthy</string>
+    <string name="core_ui_status_warning">Warning</string>
+    <string name="core_ui_status_error">Failing</string>
+    <string name="core_ui_status_pending">In progress</string>
+    <string name="core_ui_status_neutral">Unknown</string>
+    <string name="core_ui_range_1h">1h</string>
+    <string name="core_ui_range_6h">6h</string>
+    <string name="core_ui_range_24h">24h</string>
+    <string name="core_ui_range_7d">7d</string>
+    <string name="core_ui_range_30d">30d</string>
+    <string name="core_ui_range_description">Time range</string>
+    <plurals name="core_ui_points">
+        <item quantity="one">%d point</item>
+        <item quantity="other">%d points</item>
+    </plurals>
+    <string name="core_ui_error_unauthorized_title">Cloudflare did not accept this token</string>
+    <string name="core_ui_error_unauthorized_message">Check that the token was copied in full, is active, and has the permissions Virga needs.</string>
+    <string name="core_ui_error_forbidden_title">This token cannot do that</string>
+    <string name="core_ui_error_forbidden_message">Cloudflare refused the request for this token. Check its permissions.</string>
+    <string name="core_ui_error_not_found_title">Not found</string>
+    <string name="core_ui_error_not_found_message">That item no longer exists, or this token cannot see it.</string>
+    <string name="core_ui_error_rate_limited_title">Too many requests</string>
+    <string name="core_ui_error_rate_limited_message">Cloudflare limits how often Virga can ask. Wait a few minutes and try again.</string>
+    <string name="core_ui_error_rejected_title">Cloudflare rejected the request</string>
+    <string name="core_ui_error_rejected_message">The request was not accepted. Check the values you entered.</string>
+    <string name="core_ui_error_graphql_title">Analytics are unavailable</string>
+    <string name="core_ui_error_graphql_message">Cloudflare could not return this analytics query.</string>
+    <string name="core_ui_error_server_title">Cloudflare is having trouble</string>
+    <string name="core_ui_error_server_message">Try again in a moment.</string>
+    <string name="core_ui_error_network_title">No connection</string>
+    <string name="core_ui_error_network_message">Virga could not reach Cloudflare. Check your connection and try again.</string>
+    <string name="core_ui_error_decode_title">Unexpected response</string>
+    <string name="core_ui_error_local_title">Could not finish on this device</string>
+    <string name="core_ui_error_local_message">Virga could not complete this step on your device. Try again.</string>
+    <string name="core_ui_error_decode_message">Cloudflare sent data Virga could not read. Try again. If it keeps happening, the API may have changed.</string>
+    <string name="core_ui_load_more">Load more</string>
+    <string name="core_ui_loading_more">Loading more</string>
+    <string name="core_ui_load_more_failed">Could not load more. Check your connection and try again.</string>
+    <string name="core_ui_chart_summary_multi">%1$s: %2$s, lines: %3$s</string>
+    <plurals name="core_ui_series">
+        <item quantity="one">%d series</item>
+        <item quantity="other">%d series</item>
+    </plurals>
+</resources>
