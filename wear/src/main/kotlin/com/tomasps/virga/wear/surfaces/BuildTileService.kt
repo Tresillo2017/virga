@@ -1,10 +1,6 @@
 package com.tomasps.virga.wear.surfaces
 
-import androidx.wear.protolayout.ActionBuilders
-import androidx.wear.protolayout.ColorBuilders.argb
-import androidx.wear.protolayout.DimensionBuilders.sp
 import androidx.wear.protolayout.LayoutElementBuilders
-import androidx.wear.protolayout.ModifiersBuilders
 import androidx.wear.protolayout.ResourceBuilders
 import androidx.wear.protolayout.TimelineBuilders
 import androidx.wear.tiles.RequestBuilders
@@ -12,10 +8,8 @@ import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
 import com.google.common.util.concurrent.ListenableFuture
 import com.tomasps.virga.R
-import com.tomasps.virga.wear.MainActivity
 import com.tomasps.virga.wear.present.BuildTileModel
 import com.tomasps.virga.wear.present.BuildVisualState
-import com.tomasps.virga.wear.ui.EXTRA_START_ROUTE
 import com.tomasps.virga.wear.ui.detailRoute
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +22,6 @@ import java.time.Instant
 /** How long the system may show this tile before asking for a new one. */
 internal const val TILE_FRESHNESS_MILLIS = 15L * 60 * 1000
 private const val RESOURCES_VERSION = "1"
-private const val CLICK_ID = "open_build"
 private const val TITLE_SIZE_SP = 16f
 private const val STATE_SIZE_SP = 22f
 private const val DETAIL_SIZE_SP = 13f
@@ -69,10 +62,10 @@ class BuildTileService : TileService() {
     private fun layoutFor(model: BuildTileModel, route: String?): LayoutElementBuilders.LayoutElement {
         val color = if (model.isStale) STALE_ALPHA_MASK else model.state.argb()
         return LayoutElementBuilders.Column.Builder()
-            .setModifiers(openAppModifiers(route))
-            .addContent(text(model.workerName, TITLE_SIZE_SP, STALE_ALPHA_MASK.takeIf { model.isStale } ?: WHITE))
-            .addContent(text(stateLabel(model), STATE_SIZE_SP, color))
-            .addContent(text(model.detail, DETAIL_SIZE_SP, STALE_ALPHA_MASK))
+            .setModifiers(openAppModifiers(packageName, route))
+            .addContent(tileText(model.workerName, TITLE_SIZE_SP, STALE_ALPHA_MASK.takeIf { model.isStale } ?: WHITE))
+            .addContent(tileText(stateLabel(model), STATE_SIZE_SP, color))
+            .addContent(tileText(model.detail, DETAIL_SIZE_SP, STALE_ALPHA_MASK))
             .build()
     }
 
@@ -82,29 +75,6 @@ class BuildTileService : TileService() {
         BuildVisualState.FAILED -> getString(R.string.status_failed)
         BuildVisualState.CANCELED -> getString(R.string.status_canceled)
         BuildVisualState.UNKNOWN -> ""
-    }
-
-    private fun text(value: String, sizeSp: Float, color: Int): LayoutElementBuilders.LayoutElement =
-        LayoutElementBuilders.Text.Builder()
-            .setText(value)
-            .setMaxLines(1)
-            .setFontStyle(
-                LayoutElementBuilders.FontStyle.Builder().setSize(sp(sizeSp)).setColor(argb(color)).build(),
-            )
-            .build()
-
-    private fun openAppModifiers(route: String?): ModifiersBuilders.Modifiers {
-        val activity = ActionBuilders.AndroidActivity.Builder()
-            .setPackageName(packageName)
-            .setClassName(MainActivity::class.java.name)
-        if (route != null) {
-            activity.addKeyToExtraMapping(EXTRA_START_ROUTE, ActionBuilders.AndroidStringExtra.Builder().setValue(route).build())
-        }
-        val click = ModifiersBuilders.Clickable.Builder()
-            .setId(CLICK_ID)
-            .setOnClick(ActionBuilders.LaunchAction.Builder().setAndroidActivity(activity.build()).build())
-            .build()
-        return ModifiersBuilders.Modifiers.Builder().setClickable(click).build()
     }
 
     private fun BuildVisualState.argb(): Int = when (this) {

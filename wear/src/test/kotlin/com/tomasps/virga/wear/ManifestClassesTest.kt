@@ -67,6 +67,18 @@ class ManifestClassesTest {
     }
 
     @Test
+    fun summaryTileServiceIsExportedWithItsPermissionAndAction() {
+        val name = "com.tomasps.virga.wear.summary.SummaryTileService"
+        val tile = service(name)
+
+        assertTrue(androidx.wear.tiles.TileService::class.java.isAssignableFrom(Class.forName(name)))
+        assertEquals("true", tile.getAttributeNS(androidNs, "exported"))
+        assertEquals("com.google.android.wearable.permission.BIND_TILE_PROVIDER", tile.getAttributeNS(androidNs, "permission"))
+        assertEquals(listOf("androidx.wear.tiles.action.BIND_TILE_PROVIDER"), tile.actions())
+        assertEquals("@string/summary_tile_label", tile.getAttributeNS(androidNs, "label"))
+    }
+
+    @Test
     fun complicationServiceIsExportedWithItsPermissionActionAndMetaData() {
         val complication = service("com.tomasps.virga.wear.surfaces.BuildComplicationService")
 

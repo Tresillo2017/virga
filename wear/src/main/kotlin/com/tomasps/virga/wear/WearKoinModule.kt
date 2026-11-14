@@ -13,6 +13,7 @@ import com.tomasps.virga.core.auth.vault.CredentialVault
 import com.tomasps.virga.core.auth.vault.SecretCipher
 import com.tomasps.virga.core.common.builds.BuildSummary
 import com.tomasps.virga.core.common.coreCommonKoinModule
+import com.tomasps.virga.core.network.CloudflareApi
 import com.tomasps.virga.core.network.CredentialProvider
 import com.tomasps.virga.core.network.coreNetworkKoinModule
 import com.tomasps.virga.core.network.demo.DemoRouteContributor
@@ -35,6 +36,9 @@ import com.tomasps.virga.wear.demo.WearDemoRoutes
 import com.tomasps.virga.wear.builds.WearBuildsSource
 import com.tomasps.virga.wear.surfaces.BuildSurfaceRefresher
 import com.tomasps.virga.wear.surfaces.LatestBuildCache
+import com.tomasps.virga.wear.summary.SummaryCache
+import com.tomasps.virga.wear.summary.SummaryRefresher
+import com.tomasps.virga.wear.summary.SummarySource
 import com.tomasps.virga.wear.ui.BuildDetailViewModel
 import com.tomasps.virga.wear.ui.BuildListViewModel
 import com.tomasps.virga.wear.session.StalenessGuardedCredentialProvider
@@ -68,8 +72,15 @@ private val Context.wearWatchDataStore: DataStore<Preferences> by preferencesDat
     corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
 )
 
+/** The summary tile's last good numbers, kept apart from the build cache. */
+private val Context.wearSummaryDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "virga_wear_summary",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
+
 private val WATCH_STORE = named("wearWatchStore")
 private val SURFACE_STORE = named("wearSurfaceStore")
+private val SUMMARY_STORE = named("wearSummaryStore")
 private val VAULT_STORE = named("wearVaultStore")
 private val PREFS_STORE = named("wearPrefsStore")
 
@@ -86,6 +97,7 @@ val wearKoinModule = module {
     single<DataStore<Preferences>>(VAULT_STORE) { get<Context>().wearSecretDataStore }
     single<DataStore<Preferences>>(PREFS_STORE) { get<Context>().wearPrefsDataStore }
     single<DataStore<Preferences>>(SURFACE_STORE) { get<Context>().wearSurfaceDataStore }
+    single<DataStore<Preferences>>(SUMMARY_STORE) { get<Context>().wearSummaryDataStore }
     single<SecretCipher> { AesGcmCipher { AndroidKeystoreKey.getOrCreate() } }
     single { CredentialVault(get(VAULT_STORE), get(), get()) }
     single { WatchSessionPrefs(get(PREFS_STORE)) }
@@ -108,10 +120,24 @@ val wearKoinModule = module {
     } bind WearBuilds::class
 }
 
-/** What the tile and complication read: the last good build (no token) and the refresh that feeds both. */
+/**
+ * What the tiles and complication read: the last good build and the last good 24h summary (no token in either) and the
+ * refreshes that feed them.
+ */
 val wearSurfaceKoinModule = module {
     single { LatestBuildCache(get(SURFACE_STORE)) }
     single { BuildSurfaceRefresher(get(), get(WATCH_SESSION_STATE), get(), clock = Instant::now) }
+    single { SummaryCache(get(SUMMARY_STORE)) }
+    single {
+        val session = get<WatchSessionRepository>()
+        val credentials = get<CredentialProvider>()
+        SummarySource(
+            graphQl = get<CloudflareApi>().graphQl,
+            onUnauthorized = { session.onUnauthorized() },
+            hasToken = { credentials.bearerToken() != null },
+        )
+    }
+    single { SummaryRefresher(get(), get(WATCH_SESSION_STATE), get(), clock = Instant::now) }
 }
 
 /**

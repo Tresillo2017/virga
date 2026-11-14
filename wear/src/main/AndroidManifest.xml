@@ -58,6 +58,16 @@
         </service>
 
         <service
+            android:name="com.tomasps.virga.wear.summary.SummaryTileService"
+            android:exported="true"
+            android:label="@string/summary_tile_label"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+        </service>
+
+        <service
             android:name="com.tomasps.virga.wear.surfaces.BuildComplicationService"
             android:exported="true"
             android:label="@string/complication_label"

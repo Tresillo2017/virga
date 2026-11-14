@@ -53,4 +53,19 @@ class WearKoinGraphTest {
             koin.close()
         }
     }
+
+    @Test
+    fun surfaceGraphResolvesWhatTheTilesInject() {
+        val koin = koinApplication {
+            androidContext(RuntimeEnvironment.getApplication())
+            modules(wearKoinModules)
+        }.koin
+        try {
+            val summary = koin.get<com.tomasps.virga.wear.summary.SummaryRefresher>()
+            assertSame(summary, koin.get<com.tomasps.virga.wear.summary.SummaryRefresher>())
+            koin.get<com.tomasps.virga.wear.surfaces.BuildSurfaceRefresher>()
+        } finally {
+            koin.close()
+        }
+    }
 }

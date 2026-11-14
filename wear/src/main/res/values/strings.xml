@@ -33,6 +33,15 @@
     <string name="tile_label">Latest build</string>
     <string name="complication_label">Latest build</string>
 
+    <string name="summary_tile_label">Last 24h</string>
+    <string name="summary_title">Last 24h</string>
+    <string name="summary_requests">Requests</string>
+    <string name="summary_errors">Errors</string>
+    <string name="summary_open_phone">Open phone app</string>
+    <string name="summary_reconnect">Reconnect from phone</string>
+    <string name="summary_no_access">Token lacks analytics access</string>
+    <string name="summary_no_data">No data</string>
+
     <string name="action_watch">Watch this build</string>
     <string name="action_stop_watching">Stop watching</string>
     <string name="watch_alerts_off">Alerts are off</string>
