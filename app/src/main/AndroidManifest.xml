@@ -37,6 +37,20 @@
                 <data android:scheme="virga" android:host="build" />
             </intent-filter>
         </activity>
+
+        <!-- Woken when a paired watch gains or loses the Virga watch app (capability virga_watch_app, the
+             WatchCapability.NAME constant), so the handoff is published only while such a watch exists. -->
+        <service
+            android:name=".wearsync.WatchCapabilityListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.CAPABILITY_CHANGED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:path="/virga_watch_app" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Advertised to the Data Layer so the phone publishes the credential only while this app is installed.
+         Must equal WatchCapability.NAME in core:wearsync (checked by WatchCapabilityResourceTest). -->
+    <string-array name="android_wear_capabilities" translatable="false">
+        <item>virga_watch_app</item>
+    </string-array>
+</resources>

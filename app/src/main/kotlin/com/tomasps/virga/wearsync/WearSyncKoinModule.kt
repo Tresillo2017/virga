@@ -9,6 +9,8 @@ import org.koin.dsl.module
 val wearSyncKoinModule = module {
     single<HandoffTransport> { GmsHandoffTransport(get()) }
     single<PendingClearStore> { SharedPrefsPendingClearStore(get()) }
+    single<WatchAppFinder> { GmsWatchAppFinder(get()) }
+    single<HeartbeatScheduler> { WorkManagerHeartbeatScheduler(get()) }
     single {
         val context = get<Context>()
         HandoffPublisher(
@@ -17,6 +19,8 @@ val wearSyncKoinModule = module {
             transport = get(),
             clock = System::currentTimeMillis,
             pendingClear = get(),
+            watchApp = get(),
+            heartbeat = get(),
             scheduleClearRetry = { HandoffClearRetryWorker.schedule(context) },
             log = { Log.w("VirgaWear", it) },
             isUnavailable = ::isWearApiUnavailable,

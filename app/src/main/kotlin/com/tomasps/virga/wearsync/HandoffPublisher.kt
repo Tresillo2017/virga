@@ -23,9 +23,17 @@ const val SETTLE_TIMEOUT_MILLIS = 15_000L
 /** Attempts the clear-retry worker makes before giving up; the flag stays set for the next cold start. */
 const val MAX_CLEAR_ATTEMPTS = 5
 
+/** Whether a paired watch has the Virga watch app; [Unknown] when the lookup failed for a transient reason. */
+private enum class WatchPresence { Present, Absent, Unknown }
+
 /**
  * Mirrors the signed-in credential to the paired watch. Publishes on every [SessionState.SignedIn] change, clears the
  * watch on [SessionState.SignedOut] and ignores [SessionState.Restoring]. Demo publishes no token, only the flag.
+ *
+ * The token reaches the Data Layer only while [watchApp] confirms a watch with the Virga app. Signed in with no such
+ * watch, any earlier item is deleted (the same clear as sign-out) and the [heartbeat] is cancelled; it is scheduled
+ * only alongside a publish. A lookup that fails transiently neither publishes nor clears, so a working watch is never
+ * wiped on a guess. Sign-out clears without asking.
  *
  * Nothing here throws for a user without a watch. A user who never published has nothing to clear, so the clear path
  * is skipped entirely. A failed clear is remembered in [pendingClear] and retried by [retryPendingClear] (a bounded
@@ -39,6 +47,8 @@ class HandoffPublisher(
     private val transport: HandoffTransport,
     private val clock: () -> Long,
     private val pendingClear: PendingClearStore,
+    private val watchApp: WatchAppFinder,
+    private val heartbeat: HeartbeatScheduler,
     private val scheduleClearRetry: () -> Unit = {},
     private val log: (String) -> Unit = {},
     private val isUnavailable: (Exception) -> Boolean = { false },
@@ -58,6 +68,9 @@ class HandoffPublisher(
      * Returns false only when it never settled, so a worker retries. A failed publish still returns true: the next
      * period tries again.
      */
+    /** The set of watches with the Virga app changed: publish or clear to match. Same contract as [heartbeat]. */
+    suspend fun reevaluate(): Boolean = heartbeat()
+
     suspend fun heartbeat(): Boolean {
         if (!awaitSettled()) return false
         sync()
@@ -81,12 +94,41 @@ class HandoffPublisher(
     private suspend fun sync(onlyPendingClear: Boolean = false): Boolean = gate.withLock {
         when (val state = session.state.value) {
             SessionState.Restoring -> true
-            SessionState.SignedOut -> clearWatch(force = onlyPendingClear)
-            is SessionState.SignedIn -> when {
-                // Signed in again: the next publish resets the flag once it actually lands.
-                onlyPendingClear -> true
-                else -> publish(state)
+            SessionState.SignedOut -> {
+                heartbeat.cancel()
+                clearWatch(force = onlyPendingClear)
             }
+            is SessionState.SignedIn -> syncSignedIn(state, onlyPendingClear)
+        }
+    }
+
+    private suspend fun syncSignedIn(state: SessionState.SignedIn, onlyPendingClear: Boolean): Boolean =
+        when (watchPresence()) {
+            WatchPresence.Unknown -> true
+            WatchPresence.Absent -> {
+                heartbeat.cancel()
+                clearWatch(force = onlyPendingClear)
+            }
+            // Signed in again: the next publish resets a pending clear once it actually lands.
+            WatchPresence.Present -> if (onlyPendingClear) {
+                true
+            } else {
+                heartbeat.schedule()
+                publish(state)
+            }
+        }
+
+    private suspend fun watchPresence(): WatchPresence = try {
+        if (watchApp.hasWatchApp()) WatchPresence.Present else WatchPresence.Absent
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        // No Wearable API on this phone means no watch can have the app.
+        if (isUnavailable(error)) {
+            WatchPresence.Absent
+        } else {
+            log("Wear capability lookup failed: ${describe(error)}")
+            WatchPresence.Unknown
         }
     }
 

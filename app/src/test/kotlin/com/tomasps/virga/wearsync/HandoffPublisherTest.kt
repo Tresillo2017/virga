@@ -65,6 +65,22 @@ class HandoffPublisherTest {
         override suspend fun markPublished() { everPublished = true }
     }
 
+    /** A watch with Virga installed, or not; [failure] makes the lookup throw. */
+    private class FakeWatchApp(var present: Boolean = true, var failure: Exception? = null) : WatchAppFinder {
+        var lookups = 0
+        override suspend fun hasWatchApp(): Boolean {
+            lookups++
+            failure?.let { throw it }
+            return present
+        }
+    }
+
+    private class FakeHeartbeat : HeartbeatScheduler {
+        var scheduled: Boolean? = null
+        override fun schedule() { scheduled = true }
+        override fun cancel() { scheduled = false }
+    }
+
     private class FakeSession(initial: SessionState) : SessionRepository {
         override val state = MutableStateFlow(initial)
         override suspend fun restore() = Unit
@@ -106,8 +122,21 @@ class HandoffPublisherTest {
         pendingClear: PendingClearStore = FakePendingClear(),
         scheduled: () -> Unit = {},
         isUnavailable: (Exception) -> Boolean = { false },
+        watchApp: WatchAppFinder = FakeWatchApp(),
+        heartbeat: HeartbeatScheduler = FakeHeartbeat(),
         now: () -> Long = { 1_000L },
-    ) = HandoffPublisher(session, vault, transport, now, pendingClear, scheduled, {}, isUnavailable)
+    ) = HandoffPublisher(
+        session = session,
+        vault = vault,
+        transport = transport,
+        clock = now,
+        pendingClear = pendingClear,
+        watchApp = watchApp,
+        heartbeat = heartbeat,
+        scheduleClearRetry = scheduled,
+        log = {},
+        isUnavailable = isUnavailable,
+    )
 
     private fun kotlinx.coroutines.test.TestScope.harness() =
         UnconfinedTestDispatcher(testScheduler).let { TestScope2(CoroutineScope(Job() + it), it) }
@@ -381,6 +410,146 @@ class HandoffPublisherTest {
         assertEquals(false, publisher.retryPendingClear(attempt = 0))
         assertTrue(publisher.retryPendingClear(attempt = MAX_CLEAR_ATTEMPTS - 1))
         assertTrue(pending.flag)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun noWatchAppMeansNoPublishAndTheHeartbeatCancelled() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        val heartbeat = FakeHeartbeat()
+        val publisher = h.publisher(
+            FakeSession(signedIn()), vault, transport, watchApp = FakeWatchApp(present = false), heartbeat = heartbeat,
+        )
+        publisher.start(h.scope)
+        assertTrue(publisher.heartbeat())
+
+        assertTrue(transport.published.isEmpty())
+        assertEquals(0, transport.clears)
+        assertEquals(false, heartbeat.scheduled)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun aWatchAppSchedulesTheHeartbeatWithThePublish() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        val heartbeat = FakeHeartbeat()
+        h.publisher(FakeSession(signedIn()), vault, transport, heartbeat = heartbeat).start(h.scope)
+
+        assertEquals(1, transport.published.size)
+        assertEquals(true, heartbeat.scheduled)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun aWatchAppAppearingPublishes() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        val watch = FakeWatchApp(present = false)
+        val heartbeat = FakeHeartbeat()
+        val publisher = h.publisher(FakeSession(signedIn()), vault, transport, watchApp = watch, heartbeat = heartbeat)
+        publisher.start(h.scope)
+        assertTrue(transport.published.isEmpty())
+
+        watch.present = true
+        assertTrue(publisher.reevaluate())
+
+        assertEquals("tok", transport.published.single().token)
+        assertEquals(true, heartbeat.scheduled)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun theWatchAppDisappearingClearsTheItemAndCancelsTheHeartbeat() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        val watch = FakeWatchApp(present = true)
+        val heartbeat = FakeHeartbeat()
+        val pending = FakePendingClear()
+        val publisher = h.publisher(
+            FakeSession(signedIn()), vault, transport, pending, watchApp = watch, heartbeat = heartbeat,
+        )
+        publisher.start(h.scope)
+        assertEquals(1, transport.published.size)
+
+        watch.present = false
+        publisher.reevaluate()
+
+        assertEquals(1, transport.clears)
+        assertEquals(false, pending.flag)
+        assertEquals(false, heartbeat.scheduled)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun signOutClearsWithoutAskingForTheWatchApp() = runTest {
+        val h = harness()
+        val transport = FakeTransport()
+        val watch = FakeWatchApp(present = false, failure = IllegalStateException("lookup down"))
+        val heartbeat = FakeHeartbeat()
+        val pending = FakePendingClear().apply { everPublished = true }
+        h.publisher(
+            FakeSession(SessionState.SignedOut), h.vault(), transport, pending, watchApp = watch, heartbeat = heartbeat,
+        ).start(h.scope)
+
+        assertEquals(1, transport.clears)
+        assertEquals(0, watch.lookups)
+        assertEquals(false, heartbeat.scheduled)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun aFailedLookupNeitherPublishesNorClears() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        val heartbeat = FakeHeartbeat()
+        val pending = FakePendingClear().apply { everPublished = true }
+        h.publisher(
+            FakeSession(signedIn()), vault, transport, pending,
+            watchApp = FakeWatchApp(failure = IllegalStateException("transient")), heartbeat = heartbeat,
+        ).start(h.scope)
+
+        assertTrue(transport.published.isEmpty())
+        assertEquals("a transient failure must not wipe a working watch", 0, transport.clears)
+        assertNull(heartbeat.scheduled)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun anUnavailableWearApiCountsAsNoWatchApp() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        val heartbeat = FakeHeartbeat()
+        h.publisher(
+            FakeSession(signedIn()), vault, transport, isUnavailable = { true },
+            watchApp = FakeWatchApp(failure = IllegalStateException("no wear api")), heartbeat = heartbeat,
+        ).start(h.scope)
+
+        assertTrue(transport.published.isEmpty())
+        assertEquals(false, heartbeat.scheduled)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun aPendingClearRetryStillClearsWhileSignedInWithNoWatchApp() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        val pending = FakePendingClear().apply { everPublished = true; flag = true }
+        val publisher = h.publisher(
+            FakeSession(signedIn()), vault, transport, pending, watchApp = FakeWatchApp(present = false),
+        )
+
+        assertTrue(publisher.retryPendingClear(attempt = 0))
+        assertEquals(1, transport.clears)
+        assertEquals(false, pending.flag)
         h.scope.coroutineContext[Job]!!.cancel()
     }
 

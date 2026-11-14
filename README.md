@@ -65,9 +65,10 @@ A small watch app (`:wear`, Wear OS 4 / API 33 or newer) for checking and acting
 
 **Pairing and handoff**
 
-- While the phone is signed in, it publishes the token, the account list and the selected account to the watch over the Wear Data Layer (item path `/virga/credential`). It republishes on every change and as a 6-hourly heartbeat (WorkManager).
+- The watch app advertises the Wear capability `virga_watch_app`. While the phone is signed in and at least one paired watch (connected or not) advertises it, the phone publishes the token, the account list and the selected account over the Wear Data Layer (item path `/virga/credential`). It republishes on every change and as a 6-hourly heartbeat (WorkManager). With no such watch it writes nothing, deletes any item it wrote earlier and does not schedule the heartbeat. A phone-side listener for capability changes (`WatchCapabilityListenerService`) re-checks when the watch app is installed or removed, even while the phone app is not running.
 - The watch encrypts the token with its own Android Keystore key (the same AES-GCM vault design as the phone) and follows the phone's selected account.
-- Signing out on the phone deletes the Data Layer item, and the watch wipes its token. Virga does not revoke the Cloudflare API token on sign-out; revoke it in the Cloudflare dashboard if the watch is lost.
+- The Data Layer item is stored by Google Play services on the phone as well as on the watch, until it is deleted.
+- Signing out on the phone deletes the Data Layer item, and the watch wipes its token. **Disconnect** on the watch's Reconnect screen wipes the watch's copy. Virga does not revoke the Cloudflare API token on sign-out; revoke it in the Cloudflare dashboard if the watch is lost.
 - The watch locks itself after 24 hours without a check-in from the phone and shows **Reconnect from phone**. This is the bound when the phone cannot reach the watch to delete the item (for example, the watch is offline). A 401 from the API also wipes the watch token.
 
 **Build and run**
@@ -90,7 +91,7 @@ Demo data is invented. Hostnames such as `example.com` and `lantern-docs` are pl
 
 - Sign-in uses a Cloudflare API token that you paste. Virga checks it on entry (`/user/tokens/verify`), then reads your accounts.
 - The token is encrypted with AES-GCM using a non-exportable Android Keystore key. The ciphertext is stored in DataStore. The token is never shown again after entry.
-- The token is sent only in the `Authorization` header, and only to `https://api.cloudflare.com`. It is stored encrypted on the phone and is never logged or exported. Only if you pair a watch, it is also sent to that paired watch over the Wear Data Layer (Google Play services), where it is stored encrypted with the watch's own Keystore key.
+- The token is sent only in the `Authorization` header, and only to `https://api.cloudflare.com`. It is stored encrypted on the phone and is never logged or exported. Only while a paired watch has the Virga watch app installed, it is also written to the Wear Data Layer (Google Play services, which stores the item on the phone and on the watch) and the watch stores it encrypted with its own Keystore key.
 - No analytics, crash reporting or advertising SDKs. Virga has no server of its own.
 - Backups are off (`allowBackup="false"`), and backup and device-transfer rules exclude the credential store.
 - Permissions: `INTERNET`; `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC` and `POST_PROMOTED_NOTIFICATIONS` for the Watch build service and its Live Update.

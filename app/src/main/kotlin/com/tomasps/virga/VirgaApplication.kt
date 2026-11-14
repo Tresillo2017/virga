@@ -50,6 +50,6 @@ class VirgaApplication : Application() {
         startupScope.launch { koin.get<SessionRepository>().restore() }
         // Separate from restore(), so a wear-sync failure can never block the session (and the splash). The publisher
         // reads the state flow, so it sees the settled session whenever restore() finishes.
-        startupScope.launch { startWearSync(startupScope, this@VirgaApplication, koin.get(), koin.get<HandoffPublisher>()) }
+        startupScope.launch { startWearSync(startupScope, koin.get<HandoffPublisher>()) }
     }
 }
