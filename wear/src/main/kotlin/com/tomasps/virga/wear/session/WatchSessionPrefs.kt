@@ -25,6 +25,11 @@ class WatchSessionPrefs(private val store: DataStore<Preferences>) {
         }
     }
 
+    /** Removes only the check-in, so a partially written handoff restores as Stale instead of Connected. */
+    suspend fun clearCheckIn() {
+        store.edit { it.remove(CHECK_IN_KEY) }
+    }
+
     suspend fun clear() {
         store.edit { it.clear() }
     }

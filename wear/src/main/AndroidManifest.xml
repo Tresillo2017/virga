@@ -4,8 +4,9 @@
     <uses-feature android:name="android.hardware.type.watch" />
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- The module namespace is com.tomasps.virga, so component names must be fully qualified. -->
     <application
-        android:name=".VirgaWearApp"
+        android:name="com.tomasps.virga.wear.VirgaWearApp"
         android:allowBackup="false"
         android:label="Virga"
         android:supportsRtl="true"
@@ -13,7 +14,7 @@
 
         <!-- Placeholder launcher entry; replaced by the real UI in a later task. -->
         <activity
-            android:name=".MainActivity"
+            android:name="com.tomasps.virga.wear.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -22,7 +23,7 @@
         </activity>
 
         <service
-            android:name=".session.HandoffListenerService"
+            android:name="com.tomasps.virga.wear.session.HandoffListenerService"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />

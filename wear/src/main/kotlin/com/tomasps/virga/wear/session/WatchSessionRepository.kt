@@ -8,6 +8,7 @@ import com.tomasps.virga.core.wearsync.HandoffCodec
 import com.tomasps.virga.core.wearsync.HandoffDecode
 import com.tomasps.virga.core.wearsync.HandoffPayload
 import com.tomasps.virga.core.wearsync.StalenessPolicy
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,26 +31,49 @@ class WatchSessionRepository(
     private val mutableState = MutableStateFlow<WatchSessionState>(WatchSessionState.Restoring)
     val state: StateFlow<WatchSessionState> = mutableState.asStateFlow()
 
+    /** The watch-clock time of the last accepted handoff, held in memory so use-time checks need no I/O. */
+    @Volatile
+    private var checkInMillis: Long? = null
+
+    fun isCheckInStale(): Boolean = StalenessPolicy.isStale(checkInMillis, clock())
+
+    /** Never throws except on cancellation: a failed restore settles as [WatchSessionState.NotConnected]. */
     suspend fun restore() = lock.withLock {
-        val credential = vault.read()
-        val lastCheckIn = prefs.lastCheckInMillis()
-        when {
-            credential == null || credential == Credential.OAuthReserved -> deactivate(WatchSessionState.NotConnected)
-            StalenessPolicy.isStale(lastCheckIn, clock()) -> deactivate(WatchSessionState.Stale)
-            else -> activate(credential, prefs.selectedAccountId(), prefs.accountIds())
+        try {
+            restoreStored()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            deactivate(WatchSessionState.NotConnected)
         }
     }
 
+    /**
+     * A payload with no token that is not demo is treated as [clear]. Metadata is written in a crash-safe order: the
+     * check-in is cleared first, then the vault, then the metadata, so a failure part-way restores as Stale or
+     * NotConnected and never as Connected with a mix of old and new data. A storage failure disconnects and rethrows.
+     */
     suspend fun apply(payload: HandoffPayload) = lock.withLock {
         val credential = credentialOf(payload)
         if (credential == null) {
             wipe()
             return@withLock
         }
-        if (!vault.write(credential)) return@withLock
-        val accountIds = payload.accounts.map { it.id }.toSet()
-        prefs.write(clock(), payload.selectedAccountId, accountIds)
-        activate(credential, payload.selectedAccountId, accountIds)
+        try {
+            checkInMillis = null
+            prefs.clearCheckIn()
+            check(vault.write(credential)) { "vault write failed" }
+            val accountIds = payload.accounts.map { it.id }.toSet()
+            val checkIn = clock()
+            prefs.write(checkIn, payload.selectedAccountId, accountIds)
+            checkInMillis = checkIn
+            activate(credential, payload.selectedAccountId, accountIds)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            deactivate(WatchSessionState.NotConnected)
+            throw error
+        }
     }
 
     suspend fun clear() = lock.withLock { wipe() }
@@ -60,7 +84,18 @@ class WatchSessionRepository(
     /** Moves a connected session to [WatchSessionState.Stale] once the 24-hour window has passed. */
     suspend fun refreshStaleness() = lock.withLock {
         if (mutableState.value !is WatchSessionState.Connected) return@withLock
-        if (StalenessPolicy.isStale(prefs.lastCheckInMillis(), clock())) deactivate(WatchSessionState.Stale)
+        if (isCheckInStale()) deactivate(WatchSessionState.Stale)
+    }
+
+    private suspend fun restoreStored() {
+        val credential = vault.read()
+        val lastCheckIn = prefs.lastCheckInMillis()
+        checkInMillis = lastCheckIn
+        when {
+            credential == null || credential == Credential.OAuthReserved -> deactivate(WatchSessionState.NotConnected)
+            StalenessPolicy.isStale(lastCheckIn, clock()) -> deactivate(WatchSessionState.Stale)
+            else -> activate(credential, prefs.selectedAccountId(), prefs.accountIds())
+        }
     }
 
     private fun credentialOf(payload: HandoffPayload): Credential? {
@@ -90,13 +125,25 @@ class WatchSessionRepository(
         mutableState.value = next
     }
 
+    /**
+     * Prefs go first so a vault wipe that fails still leaves a restart with no check-in (Stale or NotConnected, never
+     * Connected). Both steps are always attempted and the session is always disconnected; the first failure is rethrown.
+     */
     private suspend fun wipe() {
-        try {
-            vault.wipe()
-            prefs.clear()
-        } finally {
-            deactivate(WatchSessionState.NotConnected)
-        }
+        checkInMillis = null
+        deactivate(WatchSessionState.NotConnected)
+        val prefsFailure = attempt { prefs.clear() }
+        val vaultFailure = attempt { vault.wipe() }
+        (prefsFailure ?: vaultFailure)?.let { throw it }
+    }
+
+    private suspend fun attempt(block: suspend () -> Unit): Exception? = try {
+        block()
+        null
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        error
     }
 }
 

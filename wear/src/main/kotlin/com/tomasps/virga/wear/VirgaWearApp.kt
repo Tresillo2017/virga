@@ -30,6 +30,7 @@ class VirgaWearApp : Application() {
         startupScope.launch {
             val session = koin.get<WatchSessionRepository>()
             session.restore()
+            session.refreshStaleness()
         }
     }
 }

@@ -16,6 +16,7 @@ import com.tomasps.virga.core.network.CredentialProvider
 import com.tomasps.virga.core.network.coreNetworkKoinModule
 import com.tomasps.virga.core.network.demo.DemoRouteContributor
 import com.tomasps.virga.feature.builds.demo.BuildsDemoRoutes
+import com.tomasps.virga.wear.session.StalenessGuardedCredentialProvider
 import com.tomasps.virga.wear.session.WatchSessionPrefs
 import com.tomasps.virga.wear.session.WatchSessionRepository
 import org.koin.core.qualifier.named
@@ -49,9 +50,10 @@ val wearKoinModule = module {
     single { CredentialVault(get(VAULT_STORE), get(), get()) }
     single { WatchSessionPrefs(get(PREFS_STORE)) }
     single { ActiveCredential() }
-    single<CredentialProvider> { get<ActiveCredential>() }
     single { BuildsDemoRoutes() } bind DemoRouteContributor::class
     single { WatchSessionRepository(get(), get(), get(), get(), System::currentTimeMillis) }
+    // Enforces the 24-hour rule per request, not only when something remembers to call refreshStaleness().
+    single<CredentialProvider> { StalenessGuardedCredentialProvider(get(), get()) }
 }
 
 /** Every Koin module the watch app starts with. */

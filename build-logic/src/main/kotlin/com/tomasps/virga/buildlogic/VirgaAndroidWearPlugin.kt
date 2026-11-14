@@ -7,7 +7,7 @@ import org.gradle.kotlin.dsl.configure
 
 /**
  * Convention for the :wear module. Identical to the phone application (same application id and namespace, which the
- * Data Layer requires so the watch app receives the phone app's items), except for the Wear OS 5 minimum SDK.
+ * Data Layer requires so the watch app receives the phone app's items), except for the Wear OS 4 minimum SDK (API 33).
  */
 class VirgaAndroidWearPlugin : Plugin<Project> {
     override fun apply(target: Project) {
