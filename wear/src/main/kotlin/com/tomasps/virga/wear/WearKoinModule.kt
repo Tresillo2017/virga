@@ -112,7 +112,7 @@ val wearKoinModule = module {
     single { ActiveCredential() }
     single { BuildsDemoRoutes() } bind DemoRouteContributor::class
     single { WearDemoRoutes() } bind DemoRouteContributor::class
-    single { WatchSessionRepository(get(), get(), get(), get(), System::currentTimeMillis) }
+    single { WatchSessionRepository(get(), get(), get(), get(), clock = System::currentTimeMillis) }
     single<CredentialItemSource> { DataLayerCredentialItemSource(get()) }
     single { PhoneItemBootstrap(get(), get()) }
     single { WatchDisconnect { get<WatchSessionRepository>().clear() } }

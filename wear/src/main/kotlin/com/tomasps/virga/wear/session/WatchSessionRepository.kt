@@ -1,5 +1,6 @@
 package com.tomasps.virga.wear.session
 
+import android.util.Log
 import com.tomasps.virga.core.auth.Credential
 import com.tomasps.virga.core.auth.session.ActiveCredential
 import com.tomasps.virga.core.auth.vault.CredentialVault
@@ -15,6 +16,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+private const val TAG = "VirgaWear"
+
 /**
  * The watch's view of the phone's credential handoff. [clock] is the watch's own clock: the check-in time is taken
  * from it, never from the payload, so clock skew between the devices cannot defeat the 24-hour rule.
@@ -25,6 +28,7 @@ class WatchSessionRepository(
     private val active: ActiveCredential,
     private val demoMode: DemoMode,
     private val prefs: WatchSessionPrefs,
+    private val warn: (String) -> Unit = { Log.w(TAG, it) },
     private val clock: () -> Long,
 ) {
     private val lock = Mutex()
@@ -56,6 +60,8 @@ class WatchSessionRepository(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
+            // Class name only: a message could carry storage paths or credential material.
+            warn("Session restore failed: ${error.javaClass.simpleName}")
             deactivate(WatchSessionState.NotConnected)
         }
     }

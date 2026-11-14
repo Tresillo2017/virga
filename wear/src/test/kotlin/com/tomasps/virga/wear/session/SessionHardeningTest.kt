@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -196,6 +197,25 @@ class SessionHardeningTest {
         val stale = guard.track { provider.bearerToken() }
         assertNull(stale.value)
         assertNull("a stale session sends nothing, so nothing can be blamed for a 401", stale.sentGeneration)
+        h.stop()
+    }
+
+    @Test
+    fun aFailedRestoreLogsTheExceptionClassOnceAndNoMessage() = runTest {
+        val h = Harness(this)
+        val unreadable = object : DataStore<Preferences> {
+            override val data: Flow<Preferences> = flow { throw IOException("path/with/secret") }
+            override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences) = error("unused")
+        }
+        val warnings = mutableListOf<String>()
+        val repo = WatchSessionRepository(h.vault, ActiveCredential(), DemoMode(), WatchSessionPrefs(unreadable), { warnings += it }) { h.now }
+
+        repo.restore()
+
+        assertEquals(WatchSessionState.NotConnected, repo.state.value)
+        assertEquals(1, warnings.size)
+        assertTrue(warnings.single().contains("IOException"))
+        assertFalse(warnings.single().contains("secret"))
         h.stop()
     }
 
