@@ -6,6 +6,8 @@ import com.tomasps.virga.core.common.result.ApiResult
 /** What the watch screens need from the build data. [WearBuildsSource] is the real one; tests substitute fakes. */
 interface WearBuilds {
     suspend fun recent(accountId: String): ApiResult<List<BuildSummary>>
+    /** The newest build, strictly: any failed call is a Failure, so callers never mistake a gap for "no builds". */
+    suspend fun latest(accountId: String): ApiResult<BuildSummary?>
     suspend fun detail(accountId: String, build: BuildSummary): ApiResult<BuildSummary>
     suspend fun cancel(accountId: String, buildUuid: String): ApiResult<Unit>
 

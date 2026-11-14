@@ -41,21 +41,49 @@ class WearBuildsSource(
      * session is wiped but the call still returns its own result: the UI reacts to the session state change.
      */
     override suspend fun recent(accountId: String): ApiResult<List<BuildSummary>> {
-        val op = Operation()
+        val perWorker = when (val scanned = scan(Operation(), accountId)) {
+            is ApiResult.Failure -> return scanned
+            is ApiResult.Success -> scanned.value
+        }
+        val builds = perWorker.flatMap { (it as? ApiResult.Success)?.value.orEmpty() }
+        return ApiResult.Success(newestFirst(builds).take(MAX_LISTED))
+    }
+
+    /**
+     * The newest build, strictly: fails with the first error when the Worker list or ANY Worker's builds call failed,
+     * so a missing Worker is never mistaken for "no builds" or hides a newer build. Success(null) means every call
+     * succeeded and the account has no builds.
+     */
+    override suspend fun latest(accountId: String): ApiResult<BuildSummary?> {
+        val perWorker = when (val scanned = scan(Operation(), accountId)) {
+            is ApiResult.Failure -> return scanned
+            is ApiResult.Success -> scanned.value
+        }
+        perWorker.filterIsInstance<ApiResult.Failure>().firstOrNull()?.let { return it }
+        val builds = perWorker.flatMap { (it as ApiResult.Success).value }
+        return ApiResult.Success(newestFirst(builds).firstOrNull())
+    }
+
+    /** A build without a uuid or Worker name cannot be opened. A Worker listed twice yields one copy, the newest. */
+    private fun newestFirst(builds: List<BuildSummary>): List<BuildSummary> =
+        builds.filter { it.scriptName.isNotBlank() && it.buildUuid.isNotBlank() }
+            .sortedByDescending { it.createdOn }
+            .distinctBy { it.routeKey() }
+
+    /** Fails only when the Worker list cannot be read; each Worker's own result is kept so callers choose how strict to be. */
+    private suspend fun scan(op: Operation, accountId: String): ApiResult<List<ApiResult<List<BuildSummary>>>> {
         val workers = when (val result = guarded(op) { repository.workers(accountId) }) {
             is ApiResult.Failure -> return result
             is ApiResult.Success -> result.value
         }
         val permits = Semaphore(MAX_PARALLEL_FETCHES)
-        val builds = coroutineScope {
-            workers.take(MAX_WORKERS_SCANNED)
-                .map { worker -> async { permits.withPermit { buildsOf(op, accountId, worker) } } }
-                .awaitAll()
-        }.flatten()
-        // A build without a uuid or Worker name cannot be opened. The same build can arrive twice (a Worker listed twice):
-        // keep the newest copy, since the screens key rows and routes by routeKey().
-        val actionable = builds.filter { it.scriptName.isNotBlank() && it.buildUuid.isNotBlank() }
-        return ApiResult.Success(actionable.sortedByDescending { it.createdOn }.distinctBy { it.routeKey() }.take(MAX_LISTED))
+        return ApiResult.Success(
+            coroutineScope {
+                workers.take(MAX_WORKERS_SCANNED)
+                    .map { worker -> async { permits.withPermit { buildsOf(op, accountId, worker) } } }
+                    .awaitAll()
+            },
+        )
     }
 
     override suspend fun detail(accountId: String, build: BuildSummary): ApiResult<BuildSummary> =
@@ -89,11 +117,9 @@ class WearBuildsSource(
         return guarded(op) { repository.startBuild(accountId, plan.triggerUuid, plan.target) }
     }
 
-    private suspend fun buildsOf(op: Operation, accountId: String, worker: WorkerRef): List<BuildSummary> =
-        when (val result = guarded(op) { repository.builds(accountId, worker.tag, worker.name, FIRST_PAGE, BUILDS_PER_WORKER) }) {
-            is ApiResult.Failure -> emptyList()
-            is ApiResult.Success -> result.value.map { it.toSummaryWithTag(worker.tag) }
-        }
+    private suspend fun buildsOf(op: Operation, accountId: String, worker: WorkerRef): ApiResult<List<BuildSummary>> =
+        guarded(op) { repository.builds(accountId, worker.tag, worker.name, FIRST_PAGE, BUILDS_PER_WORKER) }
+            .map { records -> records.map { it.toSummaryWithTag(worker.tag) } }
 
     private fun BuildRecord.toSummaryWithTag(tag: String): BuildSummary = toSummary().copy(workerTag = tag)
 

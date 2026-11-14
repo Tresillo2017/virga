@@ -59,12 +59,22 @@ class LatestBuildCacheTest {
     fun savedBuildRoundTripsWithAccountAndFetchTime() = runTest {
         val cache = LatestBuildCache(store())
 
-        cache.save("acc-1", build, fetchedAt)
+        cache.save("acc-1", false, build, fetchedAt)
         val loaded = cache.load()!!
 
         assertEquals("acc-1", loaded.accountId)
         assertEquals(fetchedAt, loaded.fetchedAt)
+        assertEquals(false, loaded.isDemo)
         assertEquals(build.copy(commitHash = null, commitMessage = null, author = null), loaded.build)
+    }
+
+    @Test
+    fun demoFlagRoundTrips() = runTest {
+        val cache = LatestBuildCache(store())
+
+        cache.save("acc-1", true, build, fetchedAt)
+
+        assertEquals(true, cache.load()!!.isDemo)
     }
 
     @Test
@@ -75,7 +85,7 @@ class LatestBuildCacheTest {
             createdOn = Instant.parse("2026-11-14T11:00:00Z"),
         )
 
-        cache.save("acc-1", bare, fetchedAt)
+        cache.save("acc-1", false, bare, fetchedAt)
 
         assertEquals(bare, cache.load()!!.build)
     }
@@ -83,7 +93,7 @@ class LatestBuildCacheTest {
     @Test
     fun clearRemovesTheBuild() = runTest {
         val cache = LatestBuildCache(store())
-        cache.save("acc-1", build, fetchedAt)
+        cache.save("acc-1", false, build, fetchedAt)
 
         cache.clear()
 
@@ -94,7 +104,7 @@ class LatestBuildCacheTest {
     fun corruptStoredValuesReadAsNull() = runTest {
         val store = store()
         val cache = LatestBuildCache(store)
-        cache.save("acc-1", build, fetchedAt)
+        cache.save("acc-1", false, build, fetchedAt)
         store.edit { it[stringPreferencesKey("created_on")] = "not-a-date" }
 
         assertNull(cache.load())

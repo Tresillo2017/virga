@@ -38,26 +38,50 @@ class ManifestClassesTest {
         }
     }
 
-    @Test
-    fun surfaceServicesAreDeclaredWithTheirBindingPermissions() {
+    private fun service(name: String): Element {
         val doc = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
             .newDocumentBuilder().parse(File("src/main/AndroidManifest.xml"))
         val services = doc.getElementsByTagName("service")
-        val byName = (0 until services.length).map { services.item(it) as Element }
-            .associateBy { it.getAttributeNS(androidNs, "name") }
+        return (0 until services.length).map { services.item(it) as Element }
+            .first { it.getAttributeNS(androidNs, "name") == name }
+    }
 
-        val tile = byName.getValue("com.tomasps.virga.wear.surfaces.BuildTileService")
+    private fun Element.actions(): List<String> {
+        val nodes = getElementsByTagName("action")
+        return (0 until nodes.length).map { (nodes.item(it) as Element).getAttributeNS(androidNs, "name") }
+    }
+
+    private fun Element.metaData(): Map<String, String> {
+        val nodes = getElementsByTagName("meta-data")
+        return (0 until nodes.length).map { nodes.item(it) as Element }
+            .associate { it.getAttributeNS(androidNs, "name") to it.getAttributeNS(androidNs, "value") }
+    }
+
+    @Test
+    fun tileServiceIsExportedWithItsPermissionAndAction() {
+        val tile = service("com.tomasps.virga.wear.surfaces.BuildTileService")
+
+        assertEquals("true", tile.getAttributeNS(androidNs, "exported"))
         assertEquals("com.google.android.wearable.permission.BIND_TILE_PROVIDER", tile.getAttributeNS(androidNs, "permission"))
-        val complication = byName.getValue("com.tomasps.virga.wear.surfaces.BuildComplicationService")
+        assertEquals(listOf("androidx.wear.tiles.action.BIND_TILE_PROVIDER"), tile.actions())
+    }
+
+    @Test
+    fun complicationServiceIsExportedWithItsPermissionActionAndMetaData() {
+        val complication = service("com.tomasps.virga.wear.surfaces.BuildComplicationService")
+
+        assertEquals("true", complication.getAttributeNS(androidNs, "exported"))
         assertEquals(
             "com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER",
             complication.getAttributeNS(androidNs, "permission"),
         )
-        val meta = complication.getElementsByTagName("meta-data")
-        val values = (0 until meta.length).map { meta.item(it) as Element }
-            .associate { it.getAttributeNS(androidNs, "name").substringAfterLast('.') to it.getAttributeNS(androidNs, "value") }
-        assertEquals("SHORT_TEXT,LONG_TEXT", values["SUPPORTED_TYPES"])
-        assertEquals("900", values["UPDATE_PERIOD_SECONDS"])
+        assertEquals(
+            listOf("android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST"),
+            complication.actions(),
+        )
+        val meta = complication.metaData()
+        assertEquals("SHORT_TEXT,LONG_TEXT", meta["android.support.wearable.complications.SUPPORTED_TYPES"])
+        assertEquals("900", meta["android.support.wearable.complications.UPDATE_PERIOD_SECONDS"])
     }
 
     @Test

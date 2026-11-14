@@ -13,9 +13,11 @@ import com.tomasps.virga.wear.ui.failure
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -35,12 +37,13 @@ class BuildSurfaceRefreshTest {
     private val t0 = Instant.parse("2026-11-14T12:00:00Z")
     private val t1 = Instant.parse("2026-11-14T12:20:00Z")
     private var now = t0
+    private val warnings = mutableListOf<String>()
     private val session = MutableStateFlow<WatchSessionState>(CONNECTED)
     private val source = FakeWearBuilds()
     private val cache by lazy {
         LatestBuildCache(PreferenceDataStoreFactory.create(scope = scope) { File(folder.root, "c.preferences_pb") })
     }
-    private val refresher by lazy { BuildSurfaceRefresher(source, session, cache) { now } }
+    private val refresher by lazy { BuildSurfaceRefresher(source, session, cache, warn = warnings::add) { now } }
 
     @After
     fun tearDown() = scope.cancel()
@@ -61,7 +64,7 @@ class BuildSurfaceRefreshTest {
 
         assertEquals(SurfaceData(newest, t0, SurfaceStatus.Fresh), data)
         assertEquals(newest.asCached(), cache.load()!!.build)
-        assertEquals(listOf("recent:$ACCOUNT"), source.calls)
+        assertEquals(listOf("latest:$ACCOUNT"), source.calls)
     }
 
     @Test
@@ -107,7 +110,7 @@ class BuildSurfaceRefreshTest {
     fun emptyBuildListReturnsFreshWithNoBuild() = runTest {
         succeedWith(build("b-1"))
         refresher.refresh()
-        succeedWith()
+        source.latest = ApiResult.Success(null)
         now = t1
 
         assertEquals(SurfaceData(null, t1, SurfaceStatus.Fresh), refresher.refresh())
@@ -116,7 +119,7 @@ class BuildSurfaceRefreshTest {
 
     @Test
     fun cachedBuildOfAnotherAccountIsNeverShown() = runTest {
-        cache.save("acc-other", build("b-other"), t0)
+        cache.save("acc-other", false, build("b-other"), t0)
         source.recent = failure(ApiError.Server(500))
 
         assertEquals(SurfaceData(null, null, SurfaceStatus.Stale), refresher.refresh())
@@ -124,7 +127,7 @@ class BuildSurfaceRefreshTest {
 
     @Test
     fun notConnectedSessionReturnsNotConnectedWithoutNetwork() = runTest {
-        cache.save(ACCOUNT, build("b-1"), t0)
+        cache.save(ACCOUNT, false, build("b-1"), t0)
         session.value = WatchSessionState.NotConnected
 
         assertEquals(SurfaceData(null, null, SurfaceStatus.NotConnected), refresher.refresh())
@@ -134,7 +137,7 @@ class BuildSurfaceRefreshTest {
 
     @Test
     fun staleSessionReturnsReconnectWithoutNetwork() = runTest {
-        cache.save(ACCOUNT, build("b-1"), t0)
+        cache.save(ACCOUNT, false, build("b-1"), t0)
         session.value = WatchSessionState.Stale
 
         assertEquals(SurfaceData(null, null, SurfaceStatus.Reconnect), refresher.refresh())
@@ -143,24 +146,90 @@ class BuildSurfaceRefreshTest {
     }
 
     @Test
-    fun restoringSessionThatNeverSettlesReturnsNotConnectedWithoutNetwork() = runTest {
+    fun restoringSessionThatNeverSettlesShowsNothingWithoutNetworkAndKeepsTheCache() = runTest {
+        cache.save(ACCOUNT, false, build("b-1"), t0)
         session.value = WatchSessionState.Restoring
 
         assertEquals(SurfaceStatus.NotConnected, refresher.refresh().status)
         assertTrue(source.calls.isEmpty())
+        assertEquals("b-1", cache.load()!!.build.buildUuid)
+    }
+
+    @Test
+    fun accountSwitchDuringTheCallReturnsReconnectAndNoData() = runTest {
+        val switching = object : com.tomasps.virga.wear.builds.WearBuilds by source {
+            override suspend fun latest(accountId: String): ApiResult<BuildSummary?> {
+                session.value = WatchSessionState.Connected("acc-2", isDemo = false)
+                return ApiResult.Success(build("from-a"))
+            }
+        }
+
+        val data = BuildSurfaceRefresher(switching, session, cache, warn = warnings::add) { now }.refresh()
+
+        assertEquals(SurfaceData(null, null, SurfaceStatus.Reconnect), data)
+    }
+
+    @Test
+    fun demoToLiveOnTheSameAccountIsACacheMiss() = runTest {
+        cache.save(ACCOUNT, true, build("demo-build"), t0)
+        source.recent = failure(ApiError.Server(500))
+
+        assertEquals(SurfaceData(null, null, SurfaceStatus.Stale), refresher.refresh())
+        assertNull(cache.load())
+    }
+
+    @Test
+    fun concurrentRefreshesRunOneFetchEach() = runTest {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        var running = 0
+        var maxRunning = 0
+        val slow = object : com.tomasps.virga.wear.builds.WearBuilds by source {
+            override suspend fun latest(accountId: String): ApiResult<BuildSummary?> {
+                running++
+                maxRunning = maxOf(maxRunning, running)
+                gate.await()
+                running--
+                return ApiResult.Success(build("b-1"))
+            }
+        }
+        val serialized = BuildSurfaceRefresher(slow, session, cache, warn = warnings::add) { now }
+
+        val first = async { serialized.refresh() }
+        val second = async { serialized.refresh() }
+        yield()
+        gate.complete(Unit)
+        first.await()
+        second.await()
+
+        assertEquals(1, maxRunning)
+    }
+
+    @Test
+    fun cacheWriteFailureStillReturnsTheFetchedBuildAsFresh() = runTest {
+        val broken = LatestBuildCache(
+            PreferenceDataStoreFactory.create(scope = scope) { File(folder.root, "broken.preferences_pb") },
+        )
+        folder.root.resolve("broken.preferences_pb").mkdirs() // a directory where the file should be: writes fail
+        succeedWith(build("b-1"))
+
+        val data = BuildSurfaceRefresher(source, session, broken, warn = warnings::add) { now }.refresh()
+
+        assertEquals(SurfaceStatus.Fresh, data.status)
+        assertEquals("b-1", data.latest!!.buildUuid)
+        assertTrue(warnings.isNotEmpty())
     }
 
     @Test
     fun unauthorizedWipesSessionAndReturnsReconnect() = runTest {
-        cache.save(ACCOUNT, build("b-1"), t0)
+        cache.save(ACCOUNT, false, build("b-1"), t0)
         val wiping = object : com.tomasps.virga.wear.builds.WearBuilds by source {
-            override suspend fun recent(accountId: String): ApiResult<List<BuildSummary>> {
+            override suspend fun latest(accountId: String): ApiResult<BuildSummary?> {
                 session.value = WatchSessionState.NotConnected // what WearBuildsSource's 401 handling does
                 return failure(ApiError.Unauthorized())
             }
         }
 
-        val data = BuildSurfaceRefresher(wiping, session, cache) { now }.refresh()
+        val data = BuildSurfaceRefresher(wiping, session, cache, warn = warnings::add) { now }.refresh()
 
         assertEquals(SurfaceData(null, null, SurfaceStatus.Reconnect), data)
         assertNull(cache.load())

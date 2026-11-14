@@ -30,7 +30,8 @@ class BuildComplicationService : SuspendingComplicationDataSourceService() {
     override fun getPreviewData(type: ComplicationType): ComplicationData? = render(type, PREVIEW_MODEL)
 
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
-        val data = refresher.refreshOrNull() ?: return null
+        // Never blank on the first request: a failed refresh renders as "No data".
+        val data = refresher.refreshOrNull() ?: SurfaceData(null, null, SurfaceStatus.Stale)
         return render(request.complicationType, complicationForSurface(data, Instant.now()))
     }
 

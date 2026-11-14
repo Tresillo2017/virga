@@ -1,6 +1,7 @@
 package com.tomasps.virga.wear.ui
 
 import android.net.Uri
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -100,7 +101,13 @@ private fun OpenStartRoute(nav: NavHostController, startRoute: String?, listStat
     LaunchedEffect(listState) {
         if (startRoute == null || isHandled || listState == ListState.Loading) return@LaunchedEffect
         isHandled = true
-        if (listState is ListState.Content) nav.navigate(startRoute)
+        if (listState !is ListState.Content) return@LaunchedEffect
+        // A route the graph rejects must not crash the app: stay on the list.
+        try {
+            nav.navigate(startRoute)
+        } catch (@Suppress("TooGenericExceptionCaught") error: RuntimeException) {
+            Log.w("VirgaWear", "Start route rejected: ${error::class.java.name}")
+        }
     }
 }
 

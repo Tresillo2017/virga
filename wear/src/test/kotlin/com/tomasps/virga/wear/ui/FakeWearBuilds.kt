@@ -39,12 +39,23 @@ internal class FakeWearBuilds(
     var plan: ApiResult<RetryPlan?> = ApiResult.Success(null),
     var cancel: ApiResult<Unit> = ApiResult.Success(Unit),
     var retry: ApiResult<String> = ApiResult.Success("b-2"),
+    /** When null, [latest] is derived from [recent]. */
+    var latest: ApiResult<BuildSummary?>? = null,
 ) : WearBuilds {
     val calls = mutableListOf<String>()
 
     override suspend fun recent(accountId: String): ApiResult<List<BuildSummary>> {
         calls += "recent:$accountId"
         return recent
+    }
+
+    override suspend fun latest(accountId: String): ApiResult<BuildSummary?> {
+        calls += "latest:$accountId"
+        latest?.let { return it }
+        return when (val result = recent) {
+            is ApiResult.Success -> ApiResult.Success(result.value.firstOrNull())
+            is ApiResult.Failure -> result
+        }
     }
 
     override suspend fun detail(accountId: String, build: BuildSummary): ApiResult<BuildSummary> {

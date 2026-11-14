@@ -2,6 +2,7 @@ package com.tomasps.virga.wear.surfaces
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.first
 import java.time.Instant
 
 /** The newest build the surfaces last showed, the account it belongs to and when it was fetched. */
-data class CachedBuild(val accountId: String, val build: BuildSummary, val fetchedAt: Instant)
+data class CachedBuild(val accountId: String, val isDemo: Boolean, val build: BuildSummary, val fetchedAt: Instant)
 
 /**
  * Keeps the last good build so a tile or complication can still show something when the network fails. Holds only
@@ -22,10 +23,11 @@ data class CachedBuild(val accountId: String, val build: BuildSummary, val fetch
  */
 class LatestBuildCache(private val store: DataStore<Preferences>) {
 
-    suspend fun save(accountId: String, build: BuildSummary, fetchedAt: Instant) {
+    suspend fun save(accountId: String, isDemo: Boolean, build: BuildSummary, fetchedAt: Instant) {
         store.edit { prefs ->
             prefs.clear()
             prefs[ACCOUNT] = accountId
+            prefs[IS_DEMO] = isDemo
             prefs[SCRIPT] = build.scriptName
             build.workerTag?.let { prefs[WORKER_TAG] = it }
             prefs[BUILD_UUID] = build.buildUuid
@@ -53,6 +55,7 @@ class LatestBuildCache(private val store: DataStore<Preferences>) {
 
     private fun read(prefs: Preferences): CachedBuild? {
         val accountId = prefs[ACCOUNT] ?: return null
+        val isDemo = prefs[IS_DEMO] ?: return null
         val build = BuildSummary(
             buildUuid = prefs[BUILD_UUID] ?: return null,
             scriptName = prefs[SCRIPT] ?: return null,
@@ -64,11 +67,12 @@ class LatestBuildCache(private val store: DataStore<Preferences>) {
             startedOn = prefs[STARTED_ON]?.let(Instant::ofEpochMilli),
             stoppedOn = prefs[STOPPED_ON]?.let(Instant::ofEpochMilli),
         )
-        return CachedBuild(accountId, build, Instant.ofEpochMilli(prefs[FETCHED_AT] ?: return null))
+        return CachedBuild(accountId, isDemo, build, Instant.ofEpochMilli(prefs[FETCHED_AT] ?: return null))
     }
 
     private companion object {
         val ACCOUNT = stringPreferencesKey("account_id")
+        val IS_DEMO = booleanPreferencesKey("is_demo")
         val SCRIPT = stringPreferencesKey("script_name")
         val WORKER_TAG = stringPreferencesKey("worker_tag")
         val BUILD_UUID = stringPreferencesKey("build_uuid")

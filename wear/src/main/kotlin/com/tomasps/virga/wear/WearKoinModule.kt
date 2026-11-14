@@ -92,7 +92,7 @@ val wearKoinModule = module {
 /** What the tile and complication read: the last good build (no token) and the refresh that feeds both. */
 val wearSurfaceKoinModule = module {
     single { LatestBuildCache(get(SURFACE_STORE)) }
-    single { BuildSurfaceRefresher(get(), get(WATCH_SESSION_STATE), get(), Instant::now) }
+    single { BuildSurfaceRefresher(get(), get(WATCH_SESSION_STATE), get(), clock = Instant::now) }
 }
 
 /** The screens' ViewModels. They read the session through [WATCH_SESSION_STATE] and the data through [WearBuilds]. */
