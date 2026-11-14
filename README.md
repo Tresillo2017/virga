@@ -94,7 +94,7 @@ Demo data is invented. Hostnames such as `example.com` and `lantern-docs` are pl
 - The token is sent only in the `Authorization` header, and only to `https://api.cloudflare.com`. It is stored encrypted on the phone and is never logged or exported. Only while a paired watch has the Virga watch app installed, it is also written to the Wear Data Layer (Google Play services, which stores the item on the phone and on the watch) and the watch stores it encrypted with its own Keystore key.
 - No analytics, crash reporting or advertising SDKs. Virga has no server of its own.
 - Backups are off (`allowBackup="false"`), and backup and device-transfer rules exclude the credential store.
-- Permissions: `INTERNET`; `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC` and `POST_PROMOTED_NOTIFICATIONS` for the Watch build service and its Live Update.
+- Permissions: `INTERNET`; `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC` and `POST_PROMOTED_NOTIFICATIONS` for the Watch build service and its Live Update. WorkManager, which runs the Wear handoff heartbeat and clear retry, adds `WAKE_LOCK`, `ACCESS_NETWORK_STATE` and `RECEIVE_BOOT_COMPLETED`, and its `SystemJobService` (exported, guarded by `BIND_JOB_SERVICE`) and `DiagnosticsReceiver` (exported, guarded by `DUMP`). Virga's `WatchCapabilityListenerService` is exported so Play services can deliver watch capability changes. None of these collects data (relevant to the Play Data safety form; see `docs/release-checklist.md`).
 
 ## Module map
 

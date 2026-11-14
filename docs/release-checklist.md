@@ -31,6 +31,13 @@ Answer based on what the app actually does:
 
 Re-check after any change that adds a network host, an SDK, or local storage.
 
+**Blocker for the next phone release: Wear handoff privacy copy and Data safety.** The handoff publisher lives in `:app` (`wearsync`), so it ships with the next phone release whether or not the watch app is published. Since the capability gate, the phone writes the token to the Wear Data Layer only while a paired watch has the Virga watch app installed (capability `virga_watch_app`); the item is stored by Google Play services on the phone and on the watch.
+
+- Reword the phone sign-in text (`feature/account/src/main/res/values/strings.xml`, `account_sign_in_intro`), which says the token "is sent only to api.cloudflare.com". It is not changed in the repository: the wording is the owner's decision.
+- Answer the Data safety form for the handoff: the token moves from the phone to the user's own watch over the Data Layer, only while the Virga watch app is installed, is stored encrypted on the watch, and is not sent to the developer or third parties.
+- The README and architecture text already state this.
+- The phone manifest gained, through WorkManager (the handoff heartbeat and clear-retry workers): `WAKE_LOCK`, `ACCESS_NETWORK_STATE`, `RECEIVE_BOOT_COMPLETED`, WorkManager's `SystemJobService` (exported, `BIND_JOB_SERVICE`) and `DiagnosticsReceiver` (exported, `DUMP`), plus Virga's own `WatchCapabilityListenerService` (exported, Play services binds it for capability changes). None of these collects data; mention them if the Data safety or permissions review asks.
+
 ## 4. Listing and disclaimer (Blocker)
 
 - App name: Virga. Do not use the word "Cloudflare" in the app name, the package name, the icon or the user agent. The current user agent is `Virga/<version> (Android; unofficial client)`.
@@ -103,7 +110,7 @@ Owner decisions to confirm:
 
 Owner actions before the watch app ships:
 
-- **Blocking: privacy copy and Data safety.** The phone sign-in text (`feature/account/src/main/res/values/strings.xml`) says the token "is sent only to api.cloudflare.com". With a watch paired it is also sent to the watch over the Wear Data Layer. Reword that copy, and answer the Play Data safety form for the watch handoff (the token moves phone to watch on the user's own devices, is stored encrypted on both, and is not sent to the developer or third parties). The README and architecture text are already corrected.
+- The privacy-copy and Data safety blocker for the handoff is a phone-release blocker: see section 3.
 - **Distinct versionCode.** `wear/build.gradle.kts` reads the same `virgaVersionCode` property as `:app`, and `.github/workflows/release.yml` passes one `VERSION_CODE` to `assembleRelease bundleRelease`, so the phone and watch builds get identical codes. Decide how the watch gets its own code.
 - **Archive watch outputs.** The release workflow archives only `app/` outputs, so the watch bundle and its R8 `mapping.txt` are never kept. Without the mapping, watch crash traces cannot be read.
 
@@ -120,6 +127,12 @@ Manual checks:
 - **Cancel and Retry on a real build,** including a build whose branch matches no trigger and a repo with several triggers (Retry must be hidden when no safe trigger can be chosen).
 - **Battery:** measure the impact of the watch foreground service (`dataSync`, polling while a watch is active) over a long watch, and while idle.
 - **Release build:** `:wear:assembleRelease` is minified with R8 (`wear/proguard-rules.pro`). The merged manifest and the R8 mapping keep the activity, the application class and all five services, but the release APK has not been started on a device. Install a signed release on a watch and run the checks above on it.
+
+Lint and behaviour to resolve before the watch app ships:
+
+- **Lint warnings in `:wear`:** `MissingApplicationIcon` (the watch app has no launcher icon), `TilePreviews` (no tile previews), `WearRecents` (the alert notification's tap intent: `taskAffinity` and intent flags at `WearBuildNotifier.kt:86`) and `PluralsCandidate`.
+- **Heartbeat under App Standby:** confirm by hand that the phone's 6-hour heartbeat still runs often enough in the rare and restricted App Standby buckets, so a connected watch is not locked as stale while the phone is still signed in.
+- **Complication icon (deviation, owner decision):** the spec asked for short text and an icon; the complication shows text only.
 
 Play listing for the watch app:
 

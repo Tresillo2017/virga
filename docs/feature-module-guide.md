@@ -13,7 +13,7 @@ Every feature builder follows this file. The worked example is `:feature:account
 ## Rules
 
 1. You edit only your own `feature/<name>` module. `:app` is already wired. You never edit `:app`, `core:navigation`, or another feature.
-2. Features depend on `core:*` only. Never depend on another feature.
+2. Features depend on `core:*` only. Never depend on another feature. The one exception: `:feature:builds` depends on `:feature:buildsdata`, a data-only module with no UI that the watch app shares.
 3. Every route key a feature owns is declared in that feature's module, unless another feature needs to navigate to it. Only those cross-feature keys go in `core:navigation/Keys.kt`, and a builder adds one only with the orchestrator's agreement.
 4. Strings live in your module's `res/values/strings.xml`. No English in composables or ViewModels. Use `UiText.Resource` for text a ViewModel builds.
 5. Get the session's account id from `SessionRepository.state` (`core:auth`), or from `selectedAccountIds()` in a ViewModel (see below). Never store it yourself. Exception: a cross-feature key that names a resource carries its `accountId` (for example `BuildDetail`), because a link can outlive an account switch.
