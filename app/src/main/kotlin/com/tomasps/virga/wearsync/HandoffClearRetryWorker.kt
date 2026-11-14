@@ -20,7 +20,7 @@ class HandoffClearRetryWorker(
 ) : CoroutineWorker(context, params), KoinComponent {
 
     override suspend fun doWork(): Result =
-        if (get<HandoffPublisher>().retryPendingClear()) Result.success() else Result.retry()
+        if (get<HandoffPublisher>().retryPendingClear(runAttemptCount)) Result.success() else Result.retry()
 
     companion object {
         const val UNIQUE_NAME = "virga-wear-handoff-clear-retry"

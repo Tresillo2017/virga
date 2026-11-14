@@ -20,13 +20,18 @@ import kotlinx.coroutines.withTimeoutOrNull
 /** How long a heartbeat waits for a cold-started session to leave Restoring (restore loads accounts, up to 8s). */
 const val SETTLE_TIMEOUT_MILLIS = 15_000L
 
+/** Attempts the clear-retry worker makes before giving up; the flag stays set for the next cold start. */
+const val MAX_CLEAR_ATTEMPTS = 5
+
 /**
  * Mirrors the signed-in credential to the paired watch. Publishes on every [SessionState.SignedIn] change, clears the
  * watch on [SessionState.SignedOut] and ignores [SessionState.Restoring]. Demo publishes no token, only the flag.
  *
- * Nothing here throws for a user without a watch. A failed clear is remembered in [pendingClear] and retried by
- * [retryPendingClear] (a WorkManager job and every app start), so a signed-out phone cannot leave a token on the
- * watch. Failures are logged through [log] by exception class and status code only, never a message or the payload.
+ * Nothing here throws for a user without a watch. A user who never published has nothing to clear, so the clear path
+ * is skipped entirely. A failed clear is remembered in [pendingClear] and retried by [retryPendingClear] (a bounded
+ * WorkManager job) and by the next cold start, when the collector re-runs the sign-out clear. A permanently
+ * unavailable Wearable API ([isUnavailable]) is terminal: nothing is retried or logged. Other failures are logged
+ * through [log] by exception class and status code only, never a message or the payload.
  */
 class HandoffPublisher(
     private val session: SessionRepository,
@@ -36,6 +41,7 @@ class HandoffPublisher(
     private val pendingClear: PendingClearStore,
     private val scheduleClearRetry: () -> Unit = {},
     private val log: (String) -> Unit = {},
+    private val isUnavailable: (Exception) -> Boolean = { false },
 ) {
     // Serialises the collector, the heartbeat and the retry so an older action cannot land after a newer one.
     private val gate = Mutex()
@@ -49,17 +55,24 @@ class HandoffPublisher(
 
     /**
      * Republishes the current state with a fresh timestamp. Waits (bounded) for a cold-started session to settle.
-     * Returns false when it never settled or the publish failed, so a worker can retry.
+     * Returns false only when it never settled, so a worker retries. A failed publish still returns true: the next
+     * period tries again.
      */
     suspend fun heartbeat(): Boolean {
         if (!awaitSettled()) return false
-        return sync()
+        sync()
+        return true
     }
 
-    /** Retries a clear that failed earlier. Returns true when nothing is left to do, false when it should be retried. */
-    suspend fun retryPendingClear(): Boolean {
-        if (!awaitSettled()) return false
-        return sync(onlyPendingClear = true)
+    /**
+     * Retries a clear that failed earlier. [attempt] is the worker's zero-based run count. Returns true when the work
+     * is finished (cleared, nothing pending, unavailable API or attempts used up; the flag then stays set for the next
+     * cold start), false when it should be retried.
+     */
+    suspend fun retryPendingClear(attempt: Int): Boolean {
+        if (!awaitSettled()) return attempt + 1 >= MAX_CLEAR_ATTEMPTS
+        val done = sync(onlyPendingClear = true)
+        return done || attempt + 1 >= MAX_CLEAR_ATTEMPTS
     }
 
     private suspend fun awaitSettled(): Boolean =
@@ -70,7 +83,8 @@ class HandoffPublisher(
             SessionState.Restoring -> true
             SessionState.SignedOut -> clearWatch(force = onlyPendingClear)
             is SessionState.SignedIn -> when {
-                onlyPendingClear -> pendingClear.set(false).let { true }
+                // Signed in again: the next publish resets the flag once it actually lands.
+                onlyPendingClear -> true
                 else -> publish(state)
             }
         }
@@ -78,6 +92,8 @@ class HandoffPublisher(
 
     private suspend fun clearWatch(force: Boolean): Boolean {
         if (force && !pendingClear.isSet()) return true
+        // Nothing was ever sent to a watch, so there is nothing to clear (and no watch to keep failing against).
+        if (!pendingClear.hasEverPublished()) return true
         pendingClear.set(true)
         return try {
             transport.clear()
@@ -86,6 +102,11 @@ class HandoffPublisher(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
+            if (isUnavailable(error)) {
+                // No Wearable API on this phone, so no watch can hold a credential: terminal.
+                pendingClear.set(false)
+                return true
+            }
             log("Wear clear failed: ${describe(error)}")
             scheduleClearRetry()
             false
@@ -101,7 +122,7 @@ class HandoffPublisher(
             Credential.OAuthReserved, null -> return true
         }
         if (token == null && !state.isDemo) return true
-        // Sign-out or a switch may have happened while the vault was read; do not publish for a stale session.
+        // Sign-out may have happened while the vault was read; do not publish for a signed-out session.
         if (session.state.value !is SessionState.SignedIn) return true
         val payload = HandoffPayload(
             version = HandoffPayload.CURRENT_VERSION,
@@ -113,14 +134,15 @@ class HandoffPublisher(
         )
         return try {
             transport.publish(payload)
+            pendingClear.markPublished()
             // A newer credential now sits on the watch, so an older pending clear must not wipe it.
             pendingClear.set(false)
             true
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
-            log("Wear publish failed: ${describe(error)}")
-            false
+            if (!isUnavailable(error)) log("Wear publish failed: ${describe(error)}")
+            true
         }
     }
 

@@ -42,7 +42,11 @@ class HandoffPublisherTest {
         val published = mutableListOf<HandoffPayload>()
         var clears = 0
         var failClear = false
-        override suspend fun publish(payload: HandoffPayload) { published += payload }
+        var failPublish = false
+        override suspend fun publish(payload: HandoffPayload) {
+            if (failPublish) error("data layer down")
+            published += payload
+        }
         override suspend fun clear() {
             if (failClear) error("data layer down")
             clears++
@@ -51,8 +55,11 @@ class HandoffPublisherTest {
 
     private class FakePendingClear : PendingClearStore {
         var flag = false
+        var everPublished = false
         override suspend fun isSet() = flag
         override suspend fun set(value: Boolean) { flag = value }
+        override suspend fun hasEverPublished() = everPublished
+        override suspend fun markPublished() { everPublished = true }
     }
 
     private class FakeSession(initial: SessionState) : SessionRepository {
@@ -94,8 +101,10 @@ class HandoffPublisherTest {
         vault: CredentialVault,
         transport: HandoffTransport,
         pendingClear: PendingClearStore = FakePendingClear(),
+        scheduled: () -> Unit = {},
+        isUnavailable: (Exception) -> Boolean = { false },
         now: () -> Long = { 1_000L },
-    ) = HandoffPublisher(session, vault, transport, now, pendingClear)
+    ) = HandoffPublisher(session, vault, transport, now, pendingClear, scheduled, {}, isUnavailable)
 
     private fun kotlinx.coroutines.test.TestScope.harness() =
         UnconfinedTestDispatcher(testScheduler).let { TestScope2(CoroutineScope(Job() + it), it) }
@@ -251,17 +260,17 @@ class HandoffPublisherTest {
         val h = harness()
         val vault = h.vault()
         val transport = FakeTransport().apply { failClear = true }
-        val pending = FakePendingClear()
+        val pending = FakePendingClear().apply { everPublished = true }
         val session = FakeSession(SessionState.SignedOut)
         val publisher = h.publisher(session, vault, transport, pendingClear = pending)
         publisher.start(h.scope)
 
         assertTrue(pending.flag)
-        assertEquals(false, publisher.retryPendingClear())
+        assertEquals(false, publisher.retryPendingClear(attempt = 0))
         assertTrue(pending.flag)
 
         transport.failClear = false
-        assertTrue(publisher.retryPendingClear())
+        assertTrue(publisher.retryPendingClear(attempt = 1))
         assertEquals(1, transport.clears)
         assertEquals(false, pending.flag)
         h.scope.coroutineContext[Job]!!.cancel()
@@ -272,7 +281,7 @@ class HandoffPublisherTest {
         val h = harness()
         val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
         val transport = FakeTransport().apply { failClear = true }
-        val pending = FakePendingClear()
+        val pending = FakePendingClear().apply { everPublished = true }
         val session = FakeSession(SessionState.SignedOut)
         val publisher = h.publisher(session, vault, transport, pendingClear = pending)
         publisher.start(h.scope)
@@ -282,8 +291,63 @@ class HandoffPublisherTest {
         transport.failClear = false
 
         assertEquals(false, pending.flag)
-        assertTrue(publisher.retryPendingClear())
+        assertTrue(publisher.retryPendingClear(attempt = 0))
         assertEquals(0, transport.clears)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun neverPublishedUserNeverSetsFlagOrSchedulesRetry() = runTest {
+        val h = harness()
+        val transport = FakeTransport().apply { failClear = true }
+        val pending = FakePendingClear()
+        var scheduled = 0
+        h.publisher(FakeSession(SessionState.SignedOut), h.vault(), transport, pending, { scheduled++ }).start(h.scope)
+
+        assertEquals(false, pending.flag)
+        assertEquals(0, scheduled)
+        assertEquals(0, transport.clears)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun permanentUnavailabilityClearsFlagAndStopsRetrying() = runTest {
+        val h = harness()
+        val transport = FakeTransport().apply { failClear = true }
+        val pending = FakePendingClear().apply { everPublished = true }
+        var scheduled = 0
+        val publisher = h.publisher(
+            FakeSession(SessionState.SignedOut), h.vault(), transport, pending, { scheduled++ }, { true },
+        )
+        publisher.start(h.scope)
+
+        assertEquals(false, pending.flag)
+        assertEquals(0, scheduled)
+        assertTrue(publisher.retryPendingClear(attempt = 0))
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun clearRetryStopsAfterMaxAttemptsAndKeepsFlagForNextColdStart() = runTest {
+        val h = harness()
+        val transport = FakeTransport().apply { failClear = true }
+        val pending = FakePendingClear().apply { everPublished = true; flag = true }
+        val publisher = h.publisher(FakeSession(SessionState.SignedOut), h.vault(), transport, pending)
+
+        assertEquals(false, publisher.retryPendingClear(attempt = 0))
+        assertTrue(publisher.retryPendingClear(attempt = MAX_CLEAR_ATTEMPTS - 1))
+        assertTrue(pending.flag)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun heartbeatSucceedsEvenWhenThePublishFails() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport().apply { failPublish = true }
+        val publisher = h.publisher(FakeSession(signedIn()), vault, transport)
+
+        assertTrue(publisher.heartbeat())
         h.scope.coroutineContext[Job]!!.cancel()
     }
 }

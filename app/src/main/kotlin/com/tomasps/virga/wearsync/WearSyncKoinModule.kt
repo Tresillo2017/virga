@@ -19,6 +19,7 @@ val wearSyncKoinModule = module {
             pendingClear = get(),
             scheduleClearRetry = { HandoffClearRetryWorker.schedule(context) },
             log = { Log.w("VirgaWear", it) },
+            isUnavailable = ::isWearApiUnavailable,
         )
     }
 }
