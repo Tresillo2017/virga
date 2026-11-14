@@ -10,6 +10,7 @@ import com.tomasps.virga.wear.builds.RetryPlan
 import com.tomasps.virga.wear.builds.routeKey
 import com.tomasps.virga.wear.builds.WearBuilds
 import com.tomasps.virga.wear.session.WatchSessionState
+import com.tomasps.virga.wear.surfaces.SurfaceUpdater
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.filter
@@ -52,6 +53,7 @@ class BuildDetailViewModel(
     private val session: StateFlow<WatchSessionState>,
     private val builds: WearBuilds,
     private val watcher: WatchStarter,
+    private val surfaces: SurfaceUpdater,
     initial: BuildSummary,
 ) : ViewModel() {
 
@@ -123,7 +125,9 @@ class BuildDetailViewModel(
             ActionKind.Retry -> (builds.retry(accountId, build) as? ApiResult.Failure)?.error
         }
         setAction(if (failure == null) ActionState.Done else ActionState.Failed(failure.toErrorKind()))
-        if (failure == null) load()
+        if (failure != null) return
+        surfaces.requestUpdates()
+        load()
     }
 
     /** Reads the build again, then the retry plan if the build has stopped. A failed read keeps what is shown. */

@@ -36,6 +36,8 @@ import com.tomasps.virga.wear.demo.WearDemoRoutes
 import com.tomasps.virga.wear.builds.WearBuildsSource
 import com.tomasps.virga.wear.surfaces.BuildSurfaceRefresher
 import com.tomasps.virga.wear.surfaces.LatestBuildCache
+import com.tomasps.virga.wear.surfaces.SurfaceUpdater
+import com.tomasps.virga.wear.surfaces.SystemSurfaceUpdater
 import com.tomasps.virga.wear.summary.SummaryCache
 import com.tomasps.virga.wear.summary.SummaryRefresher
 import com.tomasps.virga.wear.summary.SummarySource
@@ -126,6 +128,7 @@ val wearKoinModule = module {
  * refreshes that feed them.
  */
 val wearSurfaceKoinModule = module {
+    single<SurfaceUpdater> { SystemSurfaceUpdater(get()) }
     single { LatestBuildCache(get(SURFACE_STORE)) }
     single { BuildSurfaceRefresher(get(), get(WATCH_SESSION_STATE), get(), clock = Instant::now) }
     single { SummaryCache(get(SUMMARY_STORE)) }
@@ -150,7 +153,7 @@ val wearAlertsKoinModule = module {
 /** The screens' ViewModels. They read the session through [WATCH_SESSION_STATE] and the data through [WearBuilds]. */
 val wearUiKoinModule = module {
     viewModel { BuildListViewModel(get(WATCH_SESSION_STATE), get()) }
-    viewModel { (build: BuildSummary) -> BuildDetailViewModel(get(WATCH_SESSION_STATE), get(), get(), build) }
+    viewModel { (build: BuildSummary) -> BuildDetailViewModel(get(WATCH_SESSION_STATE), get(), get(), get(), build) }
 }
 
 /** Every Koin module the watch app starts with. */

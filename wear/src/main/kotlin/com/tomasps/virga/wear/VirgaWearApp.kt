@@ -6,6 +6,9 @@ import com.tomasps.virga.feature.builds.watch.WatchRegistry
 import com.tomasps.virga.wear.session.PhoneItemBootstrap
 import com.tomasps.virga.wear.session.WatchSessionRepository
 import com.tomasps.virga.wear.session.WatchSessionState
+import com.tomasps.virga.wear.surfaces.SessionSurfaceUpdates
+import com.tomasps.virga.wear.surfaces.SurfaceUpdater
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,12 +42,20 @@ class VirgaWearApp : Application() {
             // An item published before this app could hear about it (installed later, or reset) connects now.
             koin.get<PhoneItemBootstrap>().syncFromPhone()
         }
-        startupScope.launch { keepOnlyConnectedAccountsWatches(koin.get<WatchRegistry>(), koin.get<kotlinx.coroutines.flow.StateFlow<WatchSessionState>>(WATCH_SESSION_STATE)) }
+        startupScope.launch {
+            SessionSurfaceUpdates(koin.get<StateFlow<WatchSessionState>>(WATCH_SESSION_STATE), koin.get()).run()
+        }
+        startupScope.launch { keepOnlyConnectedAccountsWatches(koin.get<WatchRegistry>(), koin.get<StateFlow<WatchSessionState>>(WATCH_SESSION_STATE)) }
     }
 
-    /** Called when the app comes to the foreground. Cheap: no network, and nothing at all while connected. */
+    /**
+     * Called when the app comes to the foreground: refreshes the tiles and complication, and picks up a phone item
+     * missed while not connected. Cheap: no network here, and no Data Layer read while connected.
+     */
     fun onAppOpened() {
-        startupScope.launch { GlobalContext.get().get<PhoneItemBootstrap>().syncFromPhone() }
+        val koin = GlobalContext.get()
+        koin.get<SurfaceUpdater>().requestUpdates()
+        startupScope.launch { koin.get<PhoneItemBootstrap>().syncFromPhone() }
     }
 
     /**
@@ -53,7 +64,7 @@ class VirgaWearApp : Application() {
      */
     private suspend fun keepOnlyConnectedAccountsWatches(
         registry: WatchRegistry,
-        session: kotlinx.coroutines.flow.StateFlow<WatchSessionState>,
+        session: StateFlow<WatchSessionState>,
     ) {
         registry.restore()
         session.filter { it != WatchSessionState.Restoring }.collect { state ->

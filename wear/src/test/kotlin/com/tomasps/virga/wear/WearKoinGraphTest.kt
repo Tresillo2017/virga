@@ -64,6 +64,9 @@ class WearKoinGraphTest {
             val summary = koin.get<com.tomasps.virga.wear.summary.SummaryRefresher>()
             assertSame(summary, koin.get<com.tomasps.virga.wear.summary.SummaryRefresher>())
             koin.get<com.tomasps.virga.wear.surfaces.BuildSurfaceRefresher>()
+            // What VirgaWearApp and MainActivity resolve on start and on app open.
+            koin.get<com.tomasps.virga.wear.surfaces.SurfaceUpdater>()
+            koin.get<com.tomasps.virga.wear.session.PhoneItemBootstrap>()
         } finally {
             koin.close()
         }

@@ -1,5 +1,6 @@
 package com.tomasps.virga.wear.ui
 
+import com.tomasps.virga.wear.surfaces.FakeSurfaceUpdater
 import com.tomasps.virga.core.common.builds.BuildStatus
 import com.tomasps.virga.core.common.builds.BuildSummary
 import com.tomasps.virga.core.common.result.ApiError
@@ -25,14 +26,16 @@ class BuildDetailViewModelTest {
         build: BuildSummary,
         session: WatchSessionState = CONNECTED,
         watcher: FakeWatchStarter = FakeWatchStarter(),
-    ) = detailVm(fake, build, MutableStateFlow(session), watcher)
+        surfaces: FakeSurfaceUpdater = FakeSurfaceUpdater(),
+    ) = detailVm(fake, build, MutableStateFlow(session), watcher, surfaces)
 
     private fun detailVm(
         fake: FakeWearBuilds,
         build: BuildSummary,
         session: MutableStateFlow<WatchSessionState>,
         watcher: FakeWatchStarter = FakeWatchStarter(),
-    ) = main.keep(BuildDetailViewModel::class.java) { BuildDetailViewModel(session, fake, watcher, build) }
+        surfaces: FakeSurfaceUpdater = FakeSurfaceUpdater(),
+    ) = main.keep(BuildDetailViewModel::class.java) { BuildDetailViewModel(session, fake, watcher, surfaces, build) }
 
     @Test
     fun runningBuildOffersCancelNotRetry() = main.runVmTest {
@@ -94,6 +97,37 @@ class BuildDetailViewModelTest {
         advanceUntilIdle()
         assertEquals(1, fake.calls.count { it == "retry:b-1" })
         assertEquals(ActionState.Done, vm.state.value.action)
+    }
+
+    @Test
+    fun successfulCancelAndRetryRequestSurfaceUpdates() = main.runVmTest {
+        val cancelSurfaces = FakeSurfaceUpdater()
+        val cancelVm = detailVm(FakeWearBuilds(), RUNNING, surfaces = cancelSurfaces)
+        advanceUntilIdle()
+        cancelVm.cancel()
+        assertEquals("asking is not acting", 0, cancelSurfaces.requests)
+        cancelVm.confirm()
+        advanceUntilIdle()
+        assertEquals(1, cancelSurfaces.requests)
+
+        val retrySurfaces = FakeSurfaceUpdater()
+        val retryVm = detailVm(FakeWearBuilds(plan = ApiResult.Success(PLAN)), build(), surfaces = retrySurfaces)
+        advanceUntilIdle()
+        retryVm.retry()
+        retryVm.confirm()
+        advanceUntilIdle()
+        assertEquals(1, retrySurfaces.requests)
+    }
+
+    @Test
+    fun aFailedActionRequestsNoSurfaceUpdate() = main.runVmTest {
+        val surfaces = FakeSurfaceUpdater()
+        val vm = detailVm(FakeWearBuilds(cancel = failure(ApiError.Network("down"))), RUNNING, surfaces = surfaces)
+        advanceUntilIdle()
+        vm.cancel()
+        vm.confirm()
+        advanceUntilIdle()
+        assertEquals(0, surfaces.requests)
     }
 
     @Test
