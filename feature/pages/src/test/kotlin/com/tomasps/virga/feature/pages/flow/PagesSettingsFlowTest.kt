@@ -24,7 +24,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
-private const val SECRET_VALUE = "s3cr3t-value-123"
+private const val SECRET_VALUE = "placeholder-value"
 private const val NAME_INVALID = "Names use letters, digits and underscores, and cannot start with a digit."
 private const val GIT_REPO = "example-team/lantern-docs"
 
