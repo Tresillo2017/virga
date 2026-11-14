@@ -127,6 +127,8 @@ private fun androidx.wear.compose.foundation.lazy.ScalingLazyListScope.watchItem
         item { AlertsOffNotice() }
     } else if (state.canWatch) {
         item { WatchButton(onWatch) }
+        // Android refused to start the service: the build is not watched, so say alerts are off rather than crash.
+        if (state.watchFailed) item { AlertsOffText() }
     }
 }
 
@@ -159,7 +161,11 @@ private fun AlertsOffNotice() {
     val context = LocalContext.current
     val isGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
         PackageManager.PERMISSION_GRANTED
-    if (isGranted) return
+    if (!isGranted) AlertsOffText()
+}
+
+@Composable
+private fun AlertsOffText() {
     Text(
         stringResource(R.string.watch_alerts_off),
         style = MaterialTheme.typography.bodySmall,

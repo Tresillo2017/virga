@@ -4,6 +4,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.util.Log
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.tomasps.virga.core.network.RateLimiter
@@ -12,6 +13,7 @@ import com.tomasps.virga.feature.builds.watch.WatchPolicy
 import com.tomasps.virga.feature.builds.watch.WatchRegistry
 import com.tomasps.virga.wear.WATCH_SESSION_STATE
 import com.tomasps.virga.wear.session.WatchSessionState
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -24,6 +26,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+
+private const val TAG = "WearWatchService"
 
 /**
  * Foreground service (dataSync) that polls the builds watched on the watch. It runs only while the registry has an
@@ -40,7 +44,10 @@ class WearWatchService : Service(), KoinComponent {
     private val notifier: WearBuildNotifier by inject()
     private val session: StateFlow<WatchSessionState> by inject(WATCH_SESSION_STATE)
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val crashGuard = WatchCrashGuard(registry, { Log.e(TAG, it) }) { stopNow() }
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, error -> crashGuard.onFailure(error) },
+    )
     private val startLock = Mutex()
     private var loop: Job? = null
 
@@ -84,12 +91,11 @@ class WearWatchService : Service(), KoinComponent {
             budget = { rateLimiter.budget.value },
             onEvent = { event -> notifier.onEvent(event) },
         )
-        while (true) {
-            runner.run()
-            if (startLock.withLock { tryStop() }) return
-            // A newer start is pending and has not reached onStartCommand yet. Retry after the shortest delay.
-            delay(WatchPolicy.MIN_LOOP_DELAY_MS)
+        val gate = ServiceStopGate(registry, { latestStartId }) { startId ->
+            // Id read, registry check, then stopSelfResult(id): see ServiceStopGate. Android refuses a stale id.
+            stopSelfResult(startId).also { if (it) markStopped() }
         }
+        WatchServiceLoop(runner, gate) { delay(it) }.run()
     }
 
     /** Android may refuse to run a foreground service (for example from the background). Then nothing may poll. */
@@ -105,13 +111,6 @@ class WearWatchService : Service(), KoinComponent {
         registry.pauseAll()
         stopNow()
         false
-    }
-
-    /** Stops only when the runner found nothing to watch and no newer start is queued behind it. */
-    private fun tryStop(): Boolean {
-        if (!stopSelfResult(latestStartId)) return false
-        markStopped()
-        return true
     }
 
     private fun stopNow() {

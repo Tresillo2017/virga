@@ -93,11 +93,14 @@ internal fun failure(error: ApiError) = ApiResult.Failure(error)
 internal class FakeWatchStarter : com.tomasps.virga.wear.alerts.WatchStarter {
     val keys = MutableStateFlow<Set<String>>(emptySet())
     val calls = mutableListOf<String>()
+    var refuseStart = false
     override val watchedKeys: kotlinx.coroutines.flow.Flow<Set<String>> get() = keys
 
-    override fun start(accountId: String, scriptName: String, buildUuid: String) {
+    override fun start(accountId: String, scriptName: String, buildUuid: String): Boolean {
         calls += "start:$accountId:$scriptName/$buildUuid"
+        if (refuseStart) return false
         keys.value += "$scriptName/$buildUuid"
+        return true
     }
 
     override fun stop(scriptName: String, buildUuid: String) {

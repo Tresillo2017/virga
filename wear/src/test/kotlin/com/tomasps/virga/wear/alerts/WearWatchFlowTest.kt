@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -153,7 +154,7 @@ class WearWatchFlowTest {
     }
 
     @Test
-    fun fetcherReadsTheBuildThroughWearBuildsSoA401TakesTheSharedWipePath() = runTest {
+    fun fetcherDelegatesToWearBuildsRecord() = runTest {
         val builds = FakeWearBuilds()
         builds.record = ApiResult.Success(PASSED)
 
@@ -161,5 +162,77 @@ class WearWatchFlowTest {
 
         assertEquals(ApiResult.Success(PASSED), result)
         assertEquals(listOf("record:$ACCOUNT:api/b-1"), builds.calls)
+    }
+
+    @Test
+    fun startArrivingBeforeTheStopIsReadDoesNotStopTheService() = runTest(UnconfinedTestDispatcher()) {
+        val registry = registry()
+        var latestStartId = 1
+        var stops = 0
+        val gate = ServiceStopGate(registry, { latestStartId }) { id -> stops++; id == latestStartId }
+
+        // The last watch finished (registry empty); then a Watch tap bumps the start id and adds a watch.
+        latestStartId = 2
+        registry.add(ACCOUNT, "api", "b-2")
+
+        assertFalse(gate.tryStop())
+        assertEquals("Android was never asked to stop", 0, stops)
+    }
+
+    @Test
+    fun stopIsRefusedWhenAStartArrivesAfterTheIdWasRead() = runTest(UnconfinedTestDispatcher()) {
+        val registry = registry()
+        var latestStartId = 1
+        val gate = ServiceStopGate(registry, { latestStartId }) { id -> id == latestStartId }
+        val staleRead = ServiceStopGate(registry, { latestStartId.also { latestStartId++ } }) { id -> id == latestStartId }
+
+        assertTrue(gate.tryStop())
+        assertFalse("a newer start id makes Android refuse", staleRead.tryStop())
+    }
+
+    @Test
+    fun aWatchStartedBetweenEmptyAndStopIsPolledNotAbandoned() = runTest(UnconfinedTestDispatcher()) {
+        val h = harness(onFetch = { ApiResult.Success(PASSED) })
+        var reads = 0
+        // The start arrives right as the gate reads the id: after the runner returned, before the registry check.
+        val gate = ServiceStopGate(h.registry, {
+            if (reads++ == 0) h.registry.add(ACCOUNT, "api", "b-2")
+            1
+        }) { true }
+        var retrySleeps = 0
+        val loop = WatchServiceLoop(h.runner, gate) { retrySleeps++ }
+
+        loop.run()
+
+        assertEquals("the new watch was polled", listOf("b-2"), h.fetches)
+        assertEquals(1, retrySleeps)
+        assertTrue(h.registry.snapshot().isEmpty())
+    }
+
+    @Test
+    fun crashGuardLogsTheClassNameOnlyPausesWatchesAndStops() = runTest(UnconfinedTestDispatcher()) {
+        val registry = registry()
+        registry.add(ACCOUNT, "api", "b-1")
+        val logs = mutableListOf<String>()
+        var stopped = false
+        val guard = WatchCrashGuard(registry, { logs += it }) { stopped = true }
+
+        guard.onFailure(IllegalStateException("secret-token-123"))
+
+        assertTrue(registry.snapshot().isEmpty())
+        assertTrue(stopped)
+        assertTrue(logs.single().contains("IllegalStateException"))
+        assertFalse(logs.single().contains("secret"))
+    }
+
+    @Test
+    fun refusedServiceStartRemovesTheWatchAndReportsIt() = runTest(UnconfinedTestDispatcher()) {
+        val registry = registry()
+        val starter = RegistryWatchStarter(registry) { throw IllegalStateException("not allowed") }
+
+        val started = starter.start(ACCOUNT, "api", "b-1")
+
+        assertFalse(started)
+        assertTrue("no active entry nobody polls", registry.snapshot().isEmpty())
     }
 }

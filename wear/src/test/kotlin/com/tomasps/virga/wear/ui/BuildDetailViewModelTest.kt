@@ -280,4 +280,21 @@ class BuildDetailViewModelTest {
         advanceUntilIdle()
         assertFalse(vm.state.value.isWatching)
     }
+
+    @Test
+    fun refusedStartIsReportedAndClearedByTheNextTry() = main.runVmTest {
+        val watcher = FakeWatchStarter().apply { refuseStart = true }
+        val vm = detailVm(FakeWearBuilds(), RUNNING, watcher = watcher)
+        advanceUntilIdle()
+        vm.watch()
+        advanceUntilIdle()
+        assertTrue(vm.state.value.watchFailed)
+        assertFalse(vm.state.value.isWatching)
+
+        watcher.refuseStart = false
+        vm.watch()
+        advanceUntilIdle()
+        assertFalse(vm.state.value.watchFailed)
+        assertTrue(vm.state.value.isWatching)
+    }
 }

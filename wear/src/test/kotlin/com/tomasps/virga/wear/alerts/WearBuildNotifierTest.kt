@@ -89,6 +89,14 @@ class WearBuildNotifierTest {
     }
 
     @Test
+    fun unauthorizedFailurePostsNoAlert() {
+        notifier.onEvent(WatchEvent.Failed(WATCH, ApiError.Unauthorized()))
+
+        assertTrue(posted().isEmpty())
+        assertNull(alertFor(WatchEvent.Failed(WATCH, ApiError.Unauthorized())))
+    }
+
+    @Test
     fun progressPostsNothing() {
         notifier.onEvent(WatchEvent.Progress(WATCH, record(null, BuildStatus.RUNNING)))
 

@@ -1,13 +1,13 @@
 package com.tomasps.virga.feature.builds.watch
 
 /** What the watch loop does after a tick: stop the service, or sleep before the next tick. */
-internal sealed interface WatchLoopStep {
+sealed interface WatchLoopStep {
     data object Stop : WatchLoopStep
     data class Sleep(val millis: Long) : WatchLoopStep
 }
 
-/** Stop and pause decisions for [BuildWatchService], kept pure so the JVM tests cover them. */
-internal object WatchServiceStopPolicy {
+/** Stop and pause decisions for the phone and watch services, kept pure so the JVM tests cover them. */
+object WatchServiceStopPolicy {
 
     /** The service may stop only when no build is watched. */
     fun mayStop(activeWatches: Int): Boolean = activeWatches == 0

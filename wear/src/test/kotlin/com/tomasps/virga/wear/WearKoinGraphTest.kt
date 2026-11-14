@@ -34,4 +34,23 @@ class WearKoinGraphTest {
             koin.close()
         }
     }
+
+    @Test
+    fun alertsGraphResolvesWhatTheWatchServiceInjects() {
+        val koin = koinApplication {
+            androidContext(RuntimeEnvironment.getApplication())
+            modules(wearKoinModules)
+        }.koin
+        try {
+            koin.get<com.tomasps.virga.core.network.RateLimiter>()
+            val registry = koin.get<com.tomasps.virga.feature.builds.watch.WatchRegistry>()
+            assertSame(registry, koin.get<com.tomasps.virga.feature.builds.watch.WatchRegistry>())
+            koin.get<com.tomasps.virga.feature.builds.watch.BuildFetcher>()
+            koin.get<com.tomasps.virga.wear.alerts.WearBuildNotifier>()
+            koin.get<com.tomasps.virga.wear.alerts.WatchStarter>()
+            koin.get<StateFlow<WatchSessionState>>(WATCH_SESSION_STATE)
+        } finally {
+            koin.close()
+        }
+    }
 }

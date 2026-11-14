@@ -38,6 +38,8 @@ data class DetailState(
     /** Watch is offered for an active build that is not watched yet. */
     val canWatch: Boolean = false,
     val isWatching: Boolean = false,
+    /** The last Watch tap could not start the service, so the build is not watched. */
+    val watchFailed: Boolean = false,
 )
 
 /**
@@ -82,7 +84,8 @@ class BuildDetailViewModel(
         val current = mutableState.value
         val accountId = activeAccountId() ?: return
         if (!current.canWatch || current.isWatching) return
-        watcher.start(accountId, current.build.scriptName, current.build.buildUuid)
+        val isStarted = watcher.start(accountId, current.build.scriptName, current.build.buildUuid)
+        mutableState.update { it.copy(watchFailed = !isStarted) }
     }
 
     fun stopWatching() {
@@ -133,7 +136,7 @@ class BuildDetailViewModel(
         } else {
             null
         }
-        mutableState.update { stateFor(fresh, plan).copy(action = it.action, isWatching = it.isWatching) }
+        mutableState.update { stateFor(fresh, plan).copy(action = it.action, isWatching = it.isWatching, watchFailed = it.watchFailed) }
     }
 
     /** The pinned account, only while the session is still connected to it. */
