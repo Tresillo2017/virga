@@ -56,13 +56,18 @@ that release, for example after fixing a secret.
 1. **Validate**: the tag must be a release tag; a stable tag must point at a commit on `main` and needs the signing
    secrets. Pre-releases without a key are published unsigned with a warning in the notes.
 2. **Verify** (in parallel with the build): unit and UI flow tests, and Android Lint.
-3. **Build**: the minified release APK and app bundle with the tag's version, checked with `aapt2`; when signed, the
-   signature is verified with `apksigner` and the certificate fingerprint recorded.
-4. **Publish**: a GitHub release with the APK, the AAB, the R8 mapping file and `SHA256SUMS.txt`. The notes give the
-   channel, version code and certificate fingerprint, then the changes since the previous release, grouped by pull
-   request label (`.github/release.yml`).
+3. **Build**: the minified release APK and app bundle for the phone and the minified release APK for the watch
+   (`:wear`), all with the tag's version, checked with `aapt2`; when signed, both signatures are verified with
+   `apksigner`, the certificate fingerprint is recorded, and the build fails if the watch APK is signed with a different
+   key than the phone APK (the Wear Data Layer only delivers items between apps with the same package name and key).
+4. **Publish**: a GitHub release with the phone APK (`virga-<version>.apk`), the AAB, the watch APK
+   (`virga-wear-<version>.apk`), the R8 mapping files for both apps and `SHA256SUMS.txt`. The notes give the install
+   steps for both apps, the channel, version code and certificate fingerprint, then the changes since the previous
+   release, grouped by pull request label (`.github/release.yml`).
 5. **Play** (only with `PLAY_SERVICE_ACCOUNT_JSON`): pre-releases go to internal testing; stable releases go to
-   production as a draft, and a person starts the rollout in the Play Console.
+   production as a draft, and a person starts the rollout in the Play Console. Only the phone bundle is uploaded. The
+   watch app is a GitHub release APK for now: shipping it on Play needs its own `versionCode` and a form-factor release
+   (see `docs/release-checklist.md`, section 9).
 
 ## Secrets
 
