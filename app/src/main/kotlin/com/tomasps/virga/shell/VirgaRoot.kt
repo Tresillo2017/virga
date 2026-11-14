@@ -103,8 +103,10 @@ private fun ShellGate(session: SessionRepository, themes: ThemeRepository, pendi
             val lockEngaged = ready.appLock && rememberDeviceSecure()
             SecureWindow(enabled = ready.blockScreenshots)
             HideFromRecents(enabled = lockEngaged)
+            // Held above the gate: locking takes the shell out of composition, and unlocking returns to the same screen.
+            val shell = rememberShellState(sessionState)
             AppLockGate(enabled = lockEngaged, authenticate = authenticate) {
-                ShellHost(sessionState, pending)
+                ShellHost(sessionState, pending, shell)
             }
         }
     }
