@@ -33,14 +33,14 @@ class WearBuildsSource(
     private val onUnauthorized: suspend () -> Unit,
     private val hasToken: suspend () -> Boolean,
     private val warn: (String) -> Unit = { Log.w(TAG, it) },
-) {
+) : WearBuilds {
 
     /**
      * The newest builds across the first [MAX_WORKERS_SCANNED] Workers, at most [MAX_LISTED]. A Worker whose builds
      * cannot be read is skipped. Fails only when the Worker list cannot be read. After a 401 on a present token the
      * session is wiped but the call still returns its own result: the UI reacts to the session state change.
      */
-    suspend fun recent(accountId: String): ApiResult<List<BuildSummary>> {
+    override suspend fun recent(accountId: String): ApiResult<List<BuildSummary>> {
         val op = Operation()
         val workers = when (val result = guarded(op) { repository.workers(accountId) }) {
             is ApiResult.Failure -> return result
@@ -55,15 +55,15 @@ class WearBuildsSource(
         return ApiResult.Success(builds.sortedByDescending { it.createdOn }.take(MAX_LISTED))
     }
 
-    suspend fun detail(accountId: String, build: BuildSummary): ApiResult<BuildSummary> =
+    override suspend fun detail(accountId: String, build: BuildSummary): ApiResult<BuildSummary> =
         guarded(Operation()) { repository.build(accountId, build.buildUuid, build.scriptName) }
             .map { record -> record.toSummary().copy(workerTag = build.workerTag) }
 
-    suspend fun cancel(accountId: String, buildUuid: String): ApiResult<Unit> =
+    override suspend fun cancel(accountId: String, buildUuid: String): ApiResult<Unit> =
         guarded(Operation()) { repository.cancel(accountId, buildUuid) }.map { }
 
     /** Whether Retry can be offered for [build], and from which trigger and target. A null plan means hide Retry. */
-    suspend fun retryPlan(accountId: String, build: BuildSummary): ApiResult<RetryPlan?> =
+    override suspend fun retryPlan(accountId: String, build: BuildSummary): ApiResult<RetryPlan?> =
         retryPlan(Operation(), accountId, build)
 
     private suspend fun retryPlan(op: Operation, accountId: String, build: BuildSummary): ApiResult<RetryPlan?> {
@@ -77,7 +77,7 @@ class WearBuildsSource(
     }
 
     /** Starts a new build for [build]. Fails locally, without a network start call, when there is no plan. */
-    suspend fun retry(accountId: String, build: BuildSummary): ApiResult<String> {
+    override suspend fun retry(accountId: String, build: BuildSummary): ApiResult<String> {
         val op = Operation()
         val plan = when (val result = retryPlan(op, accountId, build)) {
             is ApiResult.Failure -> return result

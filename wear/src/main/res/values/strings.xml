@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="builds_title">Builds</string>
+    <string name="builds_empty">No builds</string>
+    <string name="builds_loading">Loading</string>
+    <string name="refresh">Retry</string>
+
+    <string name="status_running">Running</string>
+    <string name="status_passed">Passed</string>
+    <string name="status_failed">Failed</string>
+    <string name="status_canceled">Canceled</string>
+    <string name="status_unknown">Unknown</string>
+
+    <string name="error_offline">Offline</string>
+    <string name="error_token_rejected">Token rejected</string>
+    <string name="error_rate_limited">Rate limited</string>
+
+    <string name="connect_not_connected">Open Virga on your phone to connect</string>
+    <string name="connect_stale">Reconnect from phone</string>
+
+    <string name="action_cancel">Cancel build</string>
+    <string name="action_retry">Retry build</string>
+    <string name="confirm_cancel_title">Cancel this build?</string>
+    <string name="confirm_retry_title">Start a new build?</string>
+    <string name="confirm_yes">Confirm</string>
+    <string name="confirm_back">Back</string>
+    <string name="action_running">Working</string>
+    <string name="action_done">Done</string>
+    <string name="action_ok">OK</string>
+</resources>

@@ -1,6 +1,13 @@
 package com.tomasps.virga.wear
 
-import android.app.Activity
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import com.tomasps.virga.wear.ui.WearApp
 
-/** Placeholder launcher entry so the app installs; the real UI replaces it in a later task. */
-class MainActivity : Activity()
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent { WearApp() }
+    }
+}
