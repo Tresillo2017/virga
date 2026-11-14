@@ -91,19 +91,51 @@ Fixed since the last list (confirmed on the emulator on 2026-11-14 or by a test)
 
 Flakiness (removed by changing timing, not by retrying): `HomeDemoFlowTest` "domains show a friendly status word, never the raw word, and See all opens the domains list" failed 1 of 6 runs before the fix. Its helper scrolled to a row and then asserted it was displayed without waiting for it to be displayed, so a later section load could move the row out of view. The list helper now waits until the row is displayed before asserting, and "one Worker is building" waits for its status dot. After the change: the Home class passed 5 of 5 runs and the full suite passed. Before the change the same class passed 5 of 5 in an earlier series, so the failure rate is low and a single failure was observed. `KvImportViewModelTest` passed 5 of 5 and uses virtual time throughout, so no change was made.
 
-## 9. Deferred items
+## 9. Wear OS companion (Blocker if the watch app ships)
+
+Status: the watch app (`:wear`) has not been run on a Wear emulator or a physical watch. It is verified by JVM and Robolectric tests only. The summary tile's GraphQL query has not been run against the live Cloudflare API, and the handoff has not been tried over a real Data Layer between two devices. Everything below needs a person and hardware.
+
+Owner decisions to confirm:
+
+- The 2-hour watch limit notification ("Stopped watching") is shown on the watch when a build watched from the watch hits the 2-hour cap.
+- The summary tile labels are "Worker requests" and "Worker errors" (Workers invocations and errors, not zone HTTP traffic).
+- Wear OS 4 (API 33) is the minimum.
+
+Manual checks:
+
+- **Pairing and handoff:** pair a real watch (or a Wear emulator paired with a phone emulator in Android Studio) with the phone, sign in on the phone, and confirm the watch connects without typing anything. Repeat with the demo account and confirm the watch is in demo mode. Change the selected account on the phone and confirm the watch follows.
+- **Sign-out with the watch offline:** put the watch in airplane mode, sign out on the phone, then reconnect. Confirm the watch drops the token once it reconnects. Separately, keep it offline past the 24-hour window and confirm it shows "Reconnect from phone" and makes no API calls. Virga does not revoke the Cloudflare token on sign-out; confirm the About or listing text does not claim it does.
+- **401:** revoke the token in the Cloudflare dashboard and confirm the watch wipes its token and asks to reconnect.
+- **Tile and complication on a physical watch,** round and square: the build tile, the build complication (short and long text), and the summary tile. Check text fit, the ambient state, and refresh after a build finishes.
+- **A build watched on the phone** is bridged to the watch as a notification. Confirm it appears once and is dismissed when the phone's watch ends.
+- **A build watched from the watch** alerts once when it finishes and is not mirrored to the phone. Confirm the 2-hour stop notification.
+- **POST_NOTIFICATIONS denied on the watch:** confirm Watch this build explains or fails cleanly, and the app does not crash.
+- **Summary tile against a real account,** including a token without analytics scope (expect "Token lacks analytics access") and an account with no Workers traffic (expect zero or "No data", not a stale number).
+- **Cancel and Retry on a real build,** including a build whose branch matches no trigger and a repo with several triggers (Retry must be hidden when no safe trigger can be chosen).
+- **Battery:** measure the impact of the watch foreground service (`dataSync`, polling while a watch is active) over a long watch, and while idle.
+- **Release build:** `:wear:assembleRelease` is minified with R8 (`wear/proguard-rules.pro`). The merged manifest and the R8 mapping keep the activity, the application class and all five services, but the release APK has not been started on a device. Install a signed release on a watch and run the checks above on it.
+
+Play listing for the watch app:
+
+- Upload the watch APK or bundle in the same app (same application id `com.tomasps.virga`) as the phone app, signed with the same upload key (kept outside the repo). Give it a distinct `versionCode` from the phone build.
+- The manifest has `com.google.android.wearable.standalone=false`, so the listing must say the watch app needs the phone app to sign in.
+- Complete the Wear OS form factor requirements in Play Console, including the `dataSync` foreground service declaration for the watch (same wording as section 2) and the Data safety answers (no new data collected; the token is copied from phone to watch over the Data Layer and encrypted on the watch).
+- Screenshots from the demo account only. The README's trademark and "unofficial" wording applies to the watch listing too.
+
+## 10. Deferred items
 
 - Signed-URL downloads from non-API hosts and SigV4 signing for R2's S3 endpoint (needed for large R2 uploads and temporary credentials).
 - Workers Issues, Access, and registrar renewals: shown as "Open in dashboard" rows, not built into the app.
 - OAuth sign-in (section 7).
 - Two Watch builds at once, lock-screen behaviour and notification action truncation ("Stop watching" truncates in the shade).
 
-## 10. Before you tag the release
+## 11. Before you tag the release
 
-- `./gradlew clean testDebugUnitTest lintDebug assembleRelease` passes.
+- `./gradlew clean testDebugUnitTest lintDebug assembleRelease` passes (this includes `:wear:assembleRelease`).
 - A signed release build passes the smoke test on at least one Android 16 device and one Android 9 device.
 - README and this checklist are current.
 - Screenshots for the listing are taken from the demo account and contain no real account data.
+- Wear OS checks in section 9 done on a physical watch, or the release notes say the watch app is unverified.
 - Device matrix still open (item 14 of section 8): a signed release on Android 9 and on Android 16, with the Watch flow run twice on each, and the stop-line question in item 1 settled.
 
-Only the owner can do: create and hold the upload key (section 1); make the Play Console declarations and the demo video (sections 2 to 4); run the real-account test with a least-privilege token (section 6); register the OAuth client if it is wanted (section 7); decide whether the Watch stop line and its foreground-service design are acceptable for release (section 8, item 1).
+Only the owner can do: create and hold the upload key (section 1); make the Play Console declarations and the demo video (sections 2 to 4); run the real-account test with a least-privilege token (section 6); register the OAuth client if it is wanted (section 7); decide whether the Watch stop line and its foreground-service design are acceptable for release (section 8, item 1); run the Wear OS checks on real hardware and confirm the owner decisions in section 9.
