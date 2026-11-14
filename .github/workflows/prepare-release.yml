@@ -1,0 +1,102 @@
+name: Prepare release
+
+# The one-click way to cut a release. Picks the next version from the existing tags, tags the head of main with an
+# annotated tag, and runs the Release workflow for it. Examples, starting from v0.2.0:
+#   bump=minor, channel=beta    -> v0.3.0-beta.1
+#   bump=none,  channel=beta    -> v0.3.0-beta.2   (the next beta of the version in progress)
+#   bump=none,  channel=rc      -> v0.3.0-rc.1
+#   bump=none,  channel=stable  -> v0.3.0          (promotes the version in progress)
+#   bump=patch, channel=stable  -> v0.3.1
+# Start with dry_run to see the version without tagging anything.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version part to raise from the latest stable release, or none to continue the version in progress
+        required: true
+        type: choice
+        options: [none, patch, minor, major]
+        default: none
+      channel:
+        description: Release channel
+        required: true
+        type: choice
+        options: [beta, rc, stable, alpha]
+        default: beta
+      dry_run:
+        description: Only print the version that would be released
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prepare-release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Pick version and tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.next.outputs.tag }}
+    steps:
+      - name: Releases are cut from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run Prepare release from main, not ${GITHUB_REF_NAME}."
+          exit 1
+
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Head of main passed CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          conclusion=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&head_sha=$GITHUB_SHA&status=completed" \
+            --jq '.workflow_runs[0].conclusion // "none"')
+          if [ "$conclusion" != success ]; then
+            echo "::error::CI on main at ${GITHUB_SHA::7} is '$conclusion'. Wait for a green CI run before releasing."
+            exit 1
+          fi
+
+      - name: Next version
+        id: next
+        env:
+          BUMP: ${{ inputs.bump }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          tag=$(.github/scripts/release-version.sh next "$BUMP" "$CHANNEL")
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          .github/scripts/release-version.sh parse "$tag"
+          echo "### Next release: \`$tag\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Tag main
+        if: ${{ !inputs.dry_run }}
+        env:
+          TAG: ${{ steps.next.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Virga ${TAG#v}" "$GITHUB_SHA"
+          # A tag pushed with the workflow token does not start other workflows, so the release job below runs it.
+          git push origin "refs/tags/$TAG"
+
+  release:
+    name: Release
+    needs: tag
+    if: ${{ !inputs.dry_run }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.tag.outputs.tag }}
+    secrets: inherit

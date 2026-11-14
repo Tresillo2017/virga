@@ -47,6 +47,10 @@ Requirements: Android Studio with JDK 17, Android SDK platform 37, and a device 
 
 The release build uses R8 with rules in `app/proguard-rules.pro`. It is unsigned in the repository. The owner adds a signing configuration outside the repo.
 
+## Releases
+
+Releases are cut by GitHub Actions from a tag: stable (`v1.3.0`) or pre-release (`v1.3.0-alpha.1`, `-beta.1`, `-rc.1`). Run **Prepare release** in the Actions tab to pick the next version and publish it, or push a tag by hand. Each GitHub release carries the APK, the app bundle, the R8 mapping file and SHA-256 checksums. Signing keys come from repository secrets. See `docs/releasing.md`.
+
 ## Demo account
 
 On the sign-in screen, choose **Explore the demo**. No token is needed. The demo account serves canned responses from `core:network`'s demo engine, and each feature contributes its own routes. Writes in demo mode update in-memory state where that is cheap, and otherwise return a success response. The demo has two accounts (personal and staging), and the Pages, Workers, Domains, R2, D1 and KV screens all have seeded data. Demo requests are logged under the `VirgaDemo` logcat tag when no route matches.
