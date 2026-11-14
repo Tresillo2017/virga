@@ -1,0 +1,62 @@
+package com.tomasps.virga.wear
+
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.preferencesDataStore
+import com.tomasps.virga.core.auth.session.ActiveCredential
+import com.tomasps.virga.core.auth.vault.AesGcmCipher
+import com.tomasps.virga.core.auth.vault.AndroidKeystoreKey
+import com.tomasps.virga.core.auth.vault.CredentialVault
+import com.tomasps.virga.core.auth.vault.SecretCipher
+import com.tomasps.virga.core.common.coreCommonKoinModule
+import com.tomasps.virga.core.network.CredentialProvider
+import com.tomasps.virga.core.network.coreNetworkKoinModule
+import com.tomasps.virga.core.network.demo.DemoRouteContributor
+import com.tomasps.virga.feature.builds.demo.BuildsDemoRoutes
+import com.tomasps.virga.wear.session.WatchSessionPrefs
+import com.tomasps.virga.wear.session.WatchSessionRepository
+import org.koin.core.qualifier.named
+import org.koin.dsl.bind
+import org.koin.dsl.module
+
+/** Corrupt files are replaced with an empty store instead of throwing on every read. */
+private val Context.wearSecretDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "virga_wear_session",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
+
+private val Context.wearPrefsDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "virga_wear_prefs",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
+
+private val VAULT_STORE = named("wearVaultStore")
+private val PREFS_STORE = named("wearPrefsStore")
+
+/**
+ * The watch's own bindings, used instead of coreAuthKoinModule: that module also binds DefaultSessionRepository (the
+ * phone's sign-in flow) and a single unqualified DataStore named virga_session. The watch keeps its token in
+ * virga_wear_session and its non-secret handoff metadata in a second store. Pair with coreCommonKoinModule and
+ * coreNetworkKoinModule, which supply DispatcherProvider, DemoMode and the API.
+ */
+val wearKoinModule = module {
+    single<DataStore<Preferences>>(VAULT_STORE) { get<Context>().wearSecretDataStore }
+    single<DataStore<Preferences>>(PREFS_STORE) { get<Context>().wearPrefsDataStore }
+    single<SecretCipher> { AesGcmCipher { AndroidKeystoreKey.getOrCreate() } }
+    single { CredentialVault(get(VAULT_STORE), get(), get()) }
+    single { WatchSessionPrefs(get(PREFS_STORE)) }
+    single { ActiveCredential() }
+    single<CredentialProvider> { get<ActiveCredential>() }
+    single { BuildsDemoRoutes() } bind DemoRouteContributor::class
+    single { WatchSessionRepository(get(), get(), get(), get(), System::currentTimeMillis) }
+}
+
+/** Every Koin module the watch app starts with. */
+val wearKoinModules = listOf(
+    coreCommonKoinModule,
+    coreNetworkKoinModule,
+    wearKoinModule,
+)

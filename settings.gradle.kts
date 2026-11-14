@@ -18,6 +18,7 @@ dependencyResolutionManagement {
 rootProject.name = "Virga"
 
 include(":app")
+include(":wear")
 include(":core:common")
 include(":core:network")
 include(":core:auth")
