@@ -8,7 +8,7 @@ import java.time.Instant
  * The demo Worker whose seeded build moves through its stages. It is one of the scripts the Workers demo lists.
  * The canned scripts list has no tags, so [demoTagFor] supplies one for every name.
  */
-internal const val DEMO_LIVE_SCRIPT = "edge-api"
+const val DEMO_LIVE_SCRIPT = "edge-api"
 
 /** Prefix of every demo tag. The tag carries the script name, so the routes need no lookup table. */
 private const val DEMO_TAG_PREFIX = "demo-tag-"
@@ -20,8 +20,8 @@ internal fun demoTagFor(scriptName: String): String = DEMO_TAG_PREFIX + scriptNa
 internal fun scriptNameForDemoTag(tag: String): String? =
     tag.takeIf { it.startsWith(DEMO_TAG_PREFIX) }?.removePrefix(DEMO_TAG_PREFIX)?.takeIf { it.isNotEmpty() }
 
-/** The seeded live build's UUID. Builds triggered from the demo get their own UUIDs. */
-internal const val DEMO_LIVE_BUILD_UUID = "demo-live-0001-4b2a-9c1d-000000000001"
+/** The seeded live build's UUID. Builds triggered from the demo get their own UUIDs. Shared demo fixture. */
+const val DEMO_LIVE_BUILD_UUID = "demo-live-0001-4b2a-9c1d-000000000001"
 
 /** Offsets from the live build's first read, in milliseconds. About 40 seconds from start to finish. */
 internal const val LIVE_INITIALIZING_AT_MS = 6_000L

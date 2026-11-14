@@ -31,7 +31,7 @@ data class TriggerMetadataDto(
 )
 
 /** Maps a wire build to a record. Returns null when the build has no id or no readable creation time. */
-internal fun BuildDto.toRecord(scriptName: String): BuildRecord? {
+fun BuildDto.toRecord(scriptName: String): BuildRecord? {
     val uuid = buildUuid?.takeIf { it.isNotBlank() } ?: return null
     val created = parseInstant(createdOn) ?: return null
     return BuildRecord(
