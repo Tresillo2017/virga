@@ -19,8 +19,7 @@ class HandoffHeartbeatWorker(
 ) : CoroutineWorker(context, params), KoinComponent {
 
     override suspend fun doWork(): Result {
-        get<HandoffPublisher>().heartbeat()
-        return Result.success()
+        return if (get<HandoffPublisher>().heartbeat()) Result.success() else Result.retry()
     }
 
     companion object {

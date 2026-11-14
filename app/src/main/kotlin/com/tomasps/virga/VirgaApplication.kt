@@ -47,10 +47,9 @@ class VirgaApplication : Application() {
         // Restores the session once per process, not once per Activity. The splash waits on it. Building the session
         // graph (the HTTP client, the Keystore-backed vault) happens off the main thread, so the first frames are not
         // held up by it.
-        startupScope.launch {
-            // Starts before restore so the first SignedIn state is published to the watch.
-            startWearSync(startupScope, this@VirgaApplication, koin.get(), koin.get<HandoffPublisher>())
-            koin.get<SessionRepository>().restore()
-        }
+        startupScope.launch { koin.get<SessionRepository>().restore() }
+        // Separate from restore(), so a wear-sync failure can never block the session (and the splash). The publisher
+        // reads the state flow, so it sees the settled session whenever restore() finishes.
+        startupScope.launch { startWearSync(startupScope, this@VirgaApplication, koin.get(), koin.get<HandoffPublisher>()) }
     }
 }

@@ -20,6 +20,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -38,8 +41,18 @@ class HandoffPublisherTest {
     private class FakeTransport : HandoffTransport {
         val published = mutableListOf<HandoffPayload>()
         var clears = 0
+        var failClear = false
         override suspend fun publish(payload: HandoffPayload) { published += payload }
-        override suspend fun clear() { clears++ }
+        override suspend fun clear() {
+            if (failClear) error("data layer down")
+            clears++
+        }
+    }
+
+    private class FakePendingClear : PendingClearStore {
+        var flag = false
+        override suspend fun isSet() = flag
+        override suspend fun set(value: Boolean) { flag = value }
     }
 
     private class FakeSession(initial: SessionState) : SessionRepository {
@@ -80,8 +93,9 @@ class HandoffPublisherTest {
         session: SessionRepository,
         vault: CredentialVault,
         transport: HandoffTransport,
+        pendingClear: PendingClearStore = FakePendingClear(),
         now: () -> Long = { 1_000L },
-    ) = HandoffPublisher(session, vault, transport, now)
+    ) = HandoffPublisher(session, vault, transport, now, pendingClear)
 
     private fun kotlinx.coroutines.test.TestScope.harness() =
         UnconfinedTestDispatcher(testScheduler).let { TestScope2(CoroutineScope(Job() + it), it) }
@@ -180,6 +194,96 @@ class HandoffPublisherTest {
         h.publisher(FakeSession(signedIn()), vault, transport).start(h.scope)
 
         assertTrue(transport.published.isEmpty())
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun heartbeatWaitsForRestoringToSettleThenPublishesFreshTimestamp() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        val session = FakeSession(SessionState.Restoring)
+        var time = 1_000L
+        val publisher = h.publisher(session, vault, transport) { time }
+
+        val result = async { publisher.heartbeat() }
+        runCurrent()
+        assertTrue(transport.published.isEmpty())
+        time = 9_000L
+        session.state.value = signedIn()
+        advanceUntilIdle()
+
+        assertTrue(result.await())
+        assertEquals(listOf(9_000L), transport.published.map { it.sentAtMillis })
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun heartbeatReportsNotDoneWhenSessionNeverSettles() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        val publisher = h.publisher(FakeSession(SessionState.Restoring), vault, transport)
+
+        val result = async { publisher.heartbeat() }
+        advanceUntilIdle()
+
+        assertEquals(false, result.await())
+        assertTrue(transport.published.isEmpty())
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun demoFlaggedStateNeverPublishesAToken() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        h.publisher(FakeSession(signedIn(demo = true)), vault, transport).start(h.scope)
+
+        val p = transport.published.single()
+        assertNull(p.token)
+        assertTrue(p.isDemo)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun failedClearKeepsPendingFlagUntilRetrySucceeds() = runTest {
+        val h = harness()
+        val vault = h.vault()
+        val transport = FakeTransport().apply { failClear = true }
+        val pending = FakePendingClear()
+        val session = FakeSession(SessionState.SignedOut)
+        val publisher = h.publisher(session, vault, transport, pendingClear = pending)
+        publisher.start(h.scope)
+
+        assertTrue(pending.flag)
+        assertEquals(false, publisher.retryPendingClear())
+        assertTrue(pending.flag)
+
+        transport.failClear = false
+        assertTrue(publisher.retryPendingClear())
+        assertEquals(1, transport.clears)
+        assertEquals(false, pending.flag)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun signingBackInDropsAPendingClearSoItCannotWipeTheNewCredential() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport().apply { failClear = true }
+        val pending = FakePendingClear()
+        val session = FakeSession(SessionState.SignedOut)
+        val publisher = h.publisher(session, vault, transport, pendingClear = pending)
+        publisher.start(h.scope)
+        assertTrue(pending.flag)
+
+        session.state.value = signedIn()
+        transport.failClear = false
+
+        assertEquals(false, pending.flag)
+        assertTrue(publisher.retryPendingClear())
+        assertEquals(0, transport.clears)
         h.scope.coroutineContext[Job]!!.cancel()
     }
 }
