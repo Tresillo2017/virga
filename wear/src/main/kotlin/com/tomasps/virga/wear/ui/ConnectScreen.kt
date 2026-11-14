@@ -30,6 +30,10 @@ fun MessageScreen(message: String, actionLabel: String? = null, onAction: () -> 
 @Composable
 fun ConnectScreen() = MessageScreen(stringResource(R.string.connect_not_connected))
 
-/** Shown when the phone has not checked in for over 24 hours. No request is made from this state. */
+/**
+ * Shown when the phone has not checked in for over 24 hours. No request is made from this state. Disconnect lets the
+ * wearer drop the stored token instead of waiting for the phone.
+ */
 @Composable
-fun StaleScreen() = MessageScreen(stringResource(R.string.connect_stale))
+fun StaleScreen(onDisconnect: () -> Unit) =
+    MessageScreen(stringResource(R.string.connect_stale), stringResource(R.string.action_disconnect), onDisconnect)

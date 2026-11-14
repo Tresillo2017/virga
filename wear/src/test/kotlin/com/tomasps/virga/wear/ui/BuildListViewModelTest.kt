@@ -24,7 +24,7 @@ class BuildListViewModelTest {
     @get:Rule val main = MainDispatcherRule()
 
     private fun listVm(session: MutableStateFlow<WatchSessionState>, builds: com.tomasps.virga.wear.builds.WearBuilds) =
-        main.keep(BuildListViewModel::class.java) { BuildListViewModel(session, builds) }
+        main.keep(BuildListViewModel::class.java) { BuildListViewModel(session, builds) {} }
 
     @Test
     fun listShowsLoadingThenBuilds() = main.runVmTest {

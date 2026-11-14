@@ -49,6 +49,7 @@ import com.tomasps.virga.wear.session.PhoneItemBootstrap
 import com.tomasps.virga.wear.session.SentCredentialGuard
 import com.tomasps.virga.wear.session.SessionSentCredentialGuard
 import com.tomasps.virga.wear.session.StalenessGuardedCredentialProvider
+import com.tomasps.virga.wear.session.WatchDisconnect
 import com.tomasps.virga.wear.session.WatchSessionPrefs
 import com.tomasps.virga.wear.session.WatchSessionRepository
 import org.koin.core.module.dsl.viewModel
@@ -114,6 +115,7 @@ val wearKoinModule = module {
     single { WatchSessionRepository(get(), get(), get(), get(), System::currentTimeMillis) }
     single<CredentialItemSource> { DataLayerCredentialItemSource(get()) }
     single { PhoneItemBootstrap(get(), get()) }
+    single { WatchDisconnect { get<WatchSessionRepository>().clear() } }
     // Enforces the 24-hour rule per request, not only when something remembers to call refreshStaleness().
     single<CredentialProvider> { StalenessGuardedCredentialProvider(get()) }
     // Ties each 401 to the credential that request actually sent, so only a rejection of the token in use wipes.
@@ -152,7 +154,7 @@ val wearAlertsKoinModule = module {
 
 /** The screens' ViewModels. They read the session through [WATCH_SESSION_STATE] and the data through [WearBuilds]. */
 val wearUiKoinModule = module {
-    viewModel { BuildListViewModel(get(WATCH_SESSION_STATE), get()) }
+    viewModel { BuildListViewModel(get(WATCH_SESSION_STATE), get(), get()) }
     viewModel { (build: BuildSummary) -> BuildDetailViewModel(get(WATCH_SESSION_STATE), get(), get(), get(), build) }
 }
 

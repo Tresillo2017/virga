@@ -1,5 +1,6 @@
 package com.tomasps.virga.wear.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -20,6 +21,12 @@ fun ConfirmScreen(kind: ActionKind, onConfirm: () -> Unit, onDismiss: () -> Unit
         ActionKind.Cancel -> R.string.confirm_cancel_title
         ActionKind.Retry -> R.string.confirm_retry_title
     }
+    ConfirmScreen(title, onConfirm, onDismiss)
+}
+
+/** A question with Confirm and Back. Nothing happens until [onConfirm]. */
+@Composable
+fun ConfirmScreen(@StringRes title: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     val listState = rememberScalingLazyListState()
     ScreenScaffold(scrollState = listState) { padding ->
         ScalingLazyColumn(state = listState, contentPadding = padding) {

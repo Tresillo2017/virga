@@ -36,6 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -85,6 +86,7 @@ class WearFlowTest {
                     single { WearDemoRoutes() } bind DemoRouteContributor::class
                     single { BuildsRepository(get(), get()) }
                     single<com.tomasps.virga.wear.alerts.WatchStarter> { FakeWatchStarter() }
+                    single { com.tomasps.virga.wear.session.WatchDisconnect { session.value = WatchSessionState.NotConnected } }
                     single<com.tomasps.virga.wear.surfaces.SurfaceUpdater> { com.tomasps.virga.wear.surfaces.FakeSurfaceUpdater() }
                     single<WearBuilds> { scripted ?: WearBuildsSource(get(), FakeSentCredentialGuard()) }
                     single<StateFlow<WatchSessionState>>(WATCH_SESSION_STATE) { session }
@@ -181,5 +183,17 @@ class WearFlowTest {
         session.value = WatchSessionState.Stale
         showApp()
         waitForText("Reconnect from phone")
+    }
+
+    @Test
+    fun staleDisconnectAsksThenShowsTheConnectMessage() {
+        session.value = WatchSessionState.Stale
+        showApp()
+        click("Disconnect")
+        waitForText("Disconnect this watch?")
+        assertEquals(WatchSessionState.Stale, session.value)
+        click("Confirm")
+
+        waitForText("Open Virga on your phone to connect")
     }
 }

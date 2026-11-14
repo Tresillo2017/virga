@@ -26,16 +26,22 @@ import java.time.Instant
 
 private val StatusDotSize = 10.dp
 
+/** The stale screen's Disconnect, its confirm step and backing out of it. */
+class DisconnectActions(val onAsk: () -> Unit, val onConfirm: () -> Unit, val onDismiss: () -> Unit)
+
 @Composable
 fun BuildListScreen(
     state: ListState,
     onOpen: (BuildSummary) -> Unit,
     onRefresh: () -> Unit,
+    disconnect: DisconnectActions,
 ) {
     when (state) {
         ListState.Loading -> MessageScreen(stringResource(R.string.builds_loading))
         ListState.NotConnected -> ConnectScreen()
-        ListState.Stale -> StaleScreen()
+        ListState.Stale -> StaleScreen(onDisconnect = disconnect.onAsk)
+        ListState.ConfirmDisconnect ->
+            ConfirmScreen(R.string.confirm_disconnect_title, disconnect.onConfirm, disconnect.onDismiss)
         ListState.Empty -> MessageScreen(stringResource(R.string.builds_empty))
         is ListState.Error -> MessageScreen(state.kind.phrase(), stringResource(R.string.refresh), onRefresh)
         is ListState.Content -> BuildRows(state.builds, onOpen)

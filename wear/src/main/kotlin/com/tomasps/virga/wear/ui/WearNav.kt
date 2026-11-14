@@ -51,6 +51,13 @@ fun WearApp(startRoute: String? = null) {
                         state = listState,
                         onOpen = { build -> detailRoute(build)?.let(nav::navigate) },
                         onRefresh = listViewModel::refresh,
+                        disconnect = remember(listViewModel) {
+                            DisconnectActions(
+                                onAsk = listViewModel::askDisconnect,
+                                onConfirm = listViewModel::confirmDisconnect,
+                                onDismiss = listViewModel::dismissDisconnect,
+                            )
+                        },
                     )
                 }
                 composable(
