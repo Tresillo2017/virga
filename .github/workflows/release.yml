@@ -197,20 +197,28 @@ jobs:
       - name: Check the built version
         run: |
           aapt2="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/aapt2"
-          badging=$("$aapt2" dump badging app/build/outputs/apk/release/*.apk | head -n 1)
-          echo "$badging"
-          grep -q "versionCode='$VERSION_CODE'" <<<"$badging" || { echo "::error::versionCode is not $VERSION_CODE"; exit 1; }
-          grep -q "versionName='$VERSION_NAME'" <<<"$badging" || { echo "::error::versionName is not $VERSION_NAME"; exit 1; }
+          for apk in app/build/outputs/apk/release/*.apk wear/build/outputs/apk/release/*.apk; do
+            badging=$("$aapt2" dump badging "$apk" | head -n 1)
+            echo "$apk: $badging"
+            grep -q "versionCode='$VERSION_CODE'" <<<"$badging" || { echo "::error::$apk versionCode is not $VERSION_CODE"; exit 1; }
+            grep -q "versionName='$VERSION_NAME'" <<<"$badging" || { echo "::error::$apk versionName is not $VERSION_NAME"; exit 1; }
+          done
 
       - name: Verify signature
         id: certificate
         if: env.SIGNED == 'true'
         run: |
           apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/apksigner"
+          digest_of() {
+            "$apksigner" verify --print-certs "$1" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1
+          }
           "$apksigner" verify --verbose app/build/outputs/apk/release/*.apk
-          digest=$("$apksigner" verify --print-certs app/build/outputs/apk/release/*.apk \
-            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1)
+          "$apksigner" verify --verbose wear/build/outputs/apk/release/*.apk
+          digest=$(digest_of app/build/outputs/apk/release/*.apk)
+          wear_digest=$(digest_of wear/build/outputs/apk/release/*.apk)
           [ -n "$digest" ] || { echo "::error::Could not read the signing certificate"; exit 1; }
+          # The Wear Data Layer only delivers items between apps with the same package name and signing key.
+          [ "$digest" = "$wear_digest" ] || { echo "::error::The watch APK is signed with a different key than the phone APK"; exit 1; }
           echo "sha256=$digest" >> "$GITHUB_OUTPUT"
 
       - name: Collect artifacts
@@ -223,6 +231,9 @@ jobs:
           cp app/build/outputs/apk/release/*.apk "dist/virga-${VERSION_NAME}${suffix}.apk"
           cp app/build/outputs/bundle/release/*.aab "dist/virga-${VERSION_NAME}${suffix}.aab"
           cp app/build/outputs/mapping/release/mapping.txt "dist/virga-${VERSION_NAME}-mapping.txt"
+          # The watch app is published as an APK only. It is not uploaded to Google Play yet.
+          cp wear/build/outputs/apk/release/*.apk "dist/virga-wear-${VERSION_NAME}${suffix}.apk"
+          cp wear/build/outputs/mapping/release/mapping.txt "dist/virga-wear-${VERSION_NAME}-mapping.txt"
           (cd dist && sha256sum -- * > SHA256SUMS.txt)
           printf '%s' "$CERT_SHA256" > dist/.certificate-sha256
           ls -l dist
@@ -275,10 +286,18 @@ jobs:
               echo "> This build is **unsigned** and cannot be installed as is. It exists to check the build, not to use."
               echo
             fi
+            phone_apk=$(cd dist && ls virga-*.apk | grep -v '^virga-wear-')
+            wear_apk=$(cd dist && ls virga-wear-*.apk)
             echo "## Install"
             echo
-            echo "Download \`$(cd dist && ls virga-*.apk)\` below and open it on an Android 9 or newer device."
+            echo "**Phone.** Download \`$phone_apk\` below and open it on an Android 9 or newer device."
             echo "Updates install over an earlier Virga release signed with the same key."
+            echo
+            echo "**Watch (optional, Wear OS 4 or newer).** Install the phone app first, then \`$wear_apk\` on the paired watch with"
+            echo "adb over Wi-Fi: turn on Developer options, ADB debugging and Wireless debugging on the watch, then run"
+            echo "\`adb pair <ip>:<pairing-port>\`, \`adb connect <ip>:<port>\` and"
+            echo "\`adb -s <ip>:<port> install $wear_apk\`. Sign in (or explore the demo) on the phone and the watch connects."
+            echo "The watch app is new and has not run on a physical watch yet: bug reports are welcome."
             echo
             echo "| | |"
             echo "| --- | --- |"

@@ -6,7 +6,7 @@ Virga is not affiliated with, endorsed by, or sponsored by Cloudflare, Inc. Clou
 
 ## Status
 
-Beta. Download the latest APK from [Releases](https://github.com/Tresillo2017/virga/releases); pre-releases are signed with the same key as stable releases, so later versions install as updates. Tested on the JVM (see Testing) and on an Android 17 emulator with the demo account. Not yet tested on Android 9 or Android 16 devices, or against a production account with a least-privilege token. The Wear OS companion (below) has not been run on a Wear emulator or a physical watch. It is verified by JVM and Robolectric tests only, its 24h summary tile query has not been run against the live Cloudflare API, and the credential handoff has not been tried over a real Data Layer between two devices. Bug reports are welcome. See `docs/release-checklist.md` for what is left before a Play Store release.
+Beta. Download the latest APK from [Releases](https://github.com/Tresillo2017/virga/releases); pre-releases are signed with the same key as stable releases, so later versions install as updates. Tested on the JVM (see Testing) and on an Android 17 emulator with the demo account. Not yet tested on Android 9 or Android 16 devices, or against a production account with a least-privilege token. The Wear OS companion (below) was run once on a Wear OS 4 round emulator with a simulated demo handoff: the debug and minified release builds start, and the build list, build detail, Cancel and Retry (each behind a confirm step) and the watch alert and foreground service work. It has not been run on a physical watch, the credential handoff has not been tried over a real Data Layer between two devices, the tiles and complication have not been added to a watch face, and the 24h summary tile query has not been run against the live Cloudflare API. Bug reports are welcome. See `docs/release-checklist.md` for what is left before a Play Store release.
 
 ## Features by product
 
@@ -49,7 +49,7 @@ The release build uses R8 with rules in `app/proguard-rules.pro`. No signing key
 
 ## Releases
 
-Releases are cut by GitHub Actions from a tag: stable (`v1.3.0`) or pre-release (`v1.3.0-alpha.1`, `-beta.1`, `-rc.1`). Run **Prepare release** in the Actions tab to pick the next version and publish it, or push a tag by hand. Each GitHub release carries the APK, the app bundle, the R8 mapping file and SHA-256 checksums. Signing keys come from repository secrets. See `docs/releasing.md`.
+Releases are cut by GitHub Actions from a tag: stable (`v1.3.0`) or pre-release (`v1.3.0-alpha.1`, `-beta.1`, `-rc.1`). Run **Prepare release** in the Actions tab to pick the next version and publish it, or push a tag by hand. Each GitHub release carries the phone APK, the app bundle, the watch APK (`virga-wear-<version>.apk`), the R8 mapping files and SHA-256 checksums. Signing keys come from repository secrets. See `docs/releasing.md`.
 
 ## Wear OS companion
 
@@ -83,7 +83,9 @@ A small watch app (`:wear`, Wear OS 4 / API 33 or newer) for checking and acting
 ./gradlew :wear:assembleRelease      # minified release APK (unsigned; see the release checklist)
 ```
 
-To try the handoff on emulators, create a Wear OS emulator and pair it to a phone emulator through Android Studio's device pairing, install `:app` on the phone and `:wear` on the watch, then sign in (or explore the demo) on the phone. Not yet done; see Status.
+To install a release on a real watch, install the phone app from the same release first (the Wear Data Layer only delivers between apps with the same package name and signing key), then install `virga-wear-<version>.apk` on the paired watch with adb over Wi-Fi: turn on Developer options, ADB debugging and Wireless debugging on the watch, then `adb pair <ip>:<pairing-port>`, `adb connect <ip>:<port>` and `adb -s <ip>:<port> install virga-wear-<version>.apk`. Then sign in or explore the demo on the phone. The watch app is not published to Google Play yet.
+
+To try the handoff on emulators, create a Wear OS emulator and pair it to a phone emulator through Android Studio's device pairing, install `:app` on the phone and `:wear` on the watch, then sign in (or explore the demo) on the phone. Not yet done; see Status. The emulator run in Status used a debug-only receiver (not in the repository) that applied a demo handoff, so it did not exercise the Data Layer.
 
 ## Demo account
 

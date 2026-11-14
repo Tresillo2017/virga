@@ -99,7 +99,7 @@ Flakiness (removed by changing timing, not by retrying): `HomeDemoFlowTest` "dom
 
 ## 9. Wear OS companion (Blocker if the watch app ships)
 
-Status: the watch app (`:wear`) has not been run on a Wear emulator or a physical watch. It is verified by JVM and Robolectric tests only. The summary tile's GraphQL query has not been run against the live Cloudflare API, and the handoff has not been tried over a real Data Layer between two devices. Everything below needs a person and hardware.
+Status: the watch app (`:wear`) was run once on a Wear OS 4 (API 33) round emulator with a simulated demo handoff (a debug-only receiver that is not in the repository). On it, the debug build and the minified release build (signed with the debug key) started, and the build list, build detail, Cancel and Retry (each behind a confirm step), "Watch this build" with the notification permission prompt, the watch foreground service and the finished-build alert worked. It has not been run on a physical watch. The handoff has not been tried over a real Data Layer between two devices, the tiles and complication have not been added to a watch face, the summary tile's GraphQL query has not been run against the live Cloudflare API, and square screens and ambient mode have not been looked at. Known gap seen on the emulator: an open detail screen does not update when its build finishes in the background. Everything below needs a person and hardware.
 
 Owner decisions to confirm:
 
