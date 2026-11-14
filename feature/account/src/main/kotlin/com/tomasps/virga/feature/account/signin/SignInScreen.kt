@@ -1,11 +1,5 @@
 package com.tomasps.virga.feature.account.signin
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
-import android.view.WindowManager
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
@@ -21,7 +15,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -41,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.tomasps.virga.core.navigation.LocalNavigator
 import com.tomasps.virga.core.ui.brand.VirgaLockup
 import com.tomasps.virga.core.ui.state.asString
+import com.tomasps.virga.core.ui.window.SecureWindow
 import com.tomasps.virga.feature.account.R
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -77,7 +74,8 @@ fun SignInScreen(
     onOpenTokenPage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SecureWhileRevealed(isRevealed = state.isTokenVisible)
+    // The token is on screen in plain text: keep it out of screenshots and the Recents preview.
+    SecureWindow(enabled = state.isTokenVisible)
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -117,27 +115,6 @@ fun SignInScreen(
     }
 }
 
-/**
- * While the token is revealed, the window is marked secure: no screenshot, and no plaintext thumbnail in Recents
- * if the app is backgrounded. The flag is removed as soon as the token is hidden or the screen leaves.
- */
-@Composable
-private fun SecureWhileRevealed(isRevealed: Boolean) {
-    val window = LocalContext.current.findActivity()?.window ?: return
-    DisposableEffect(isRevealed) {
-        if (isRevealed) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        onDispose {
-            if (isRevealed) window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        }
-    }
-}
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
-}
-
 @Composable
 private fun TokenField(
     state: SignInUiState,
@@ -167,12 +144,13 @@ private fun TokenField(
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SignInButtons(state: SignInUiState, onSignIn: () -> Unit, onExploreDemo: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         Button(onClick = onSignIn, enabled = !state.isVerifying, modifier = Modifier.fillMaxWidth()) {
             if (state.isVerifying) {
-                CircularProgressIndicator(modifier = Modifier.size(BUTTON_PROGRESS_SIZE), strokeWidth = 2.dp)
+                LoadingIndicator(modifier = Modifier.size(BUTTON_PROGRESS_SIZE), color = LocalContentColor.current)
                 Spacer(Modifier.width(8.dp))
             }
             Text(stringResource(R.string.account_sign_in_verify))

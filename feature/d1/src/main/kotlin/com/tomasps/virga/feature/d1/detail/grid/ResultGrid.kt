@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,7 +69,7 @@ private fun GridLine(
         .fillMaxWidth()
         .horizontalScroll(scrollState)
         .let { if (header) it.background(MaterialTheme.colorScheme.surfaceVariant) else it }
-        .let { if (onClick != null) it.clickable(onClick = onClick) else it }
+        .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it }
     Row(modifier = rowModifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
         cells.forEachIndexed { index, text ->
             Text(

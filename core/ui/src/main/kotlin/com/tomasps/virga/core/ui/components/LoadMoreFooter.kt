@@ -5,7 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,6 +37,7 @@ fun loadMoreStateOf(hasMore: Boolean, isLoading: Boolean, hasFailed: Boolean): L
 }
 
 /** Footer at the end of a paged list: a "Load more" button, a spinner while loading, or a retry after a failure. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LoadMoreFooter(
     state: LoadMoreState,
@@ -55,11 +57,10 @@ fun LoadMoreFooter(
             LoadMoreState.AVAILABLE -> TextButton(onClick = onLoadMore) {
                 Text(stringResource(R.string.core_ui_load_more))
             }
-            LoadMoreState.LOADING -> CircularProgressIndicator(
+            LoadMoreState.LOADING -> LoadingIndicator(
                 modifier = Modifier
                     .size(SPINNER_SIZE)
                     .semantics { contentDescription = loadingLabel },
-                strokeWidth = 2.dp,
             )
             LoadMoreState.FAILED -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(

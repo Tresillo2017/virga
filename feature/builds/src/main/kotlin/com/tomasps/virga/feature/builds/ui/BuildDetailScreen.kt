@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.ui.draw.clip
+import com.tomasps.virga.core.ui.theme.segmentedShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
@@ -277,7 +279,7 @@ private fun BuildStatusCard(build: BuildRecord, timings: List<StageTiming>, now:
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(CARD_CORNER))
+            .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(CARD_PADDING),
     ) {
@@ -325,7 +327,7 @@ private fun StageBar(segments: List<StageSegment>) {
                 modifier = Modifier
                     .weight(1f)
                     .height(SEGMENT_HEIGHT)
-                    .clip(RoundedCornerShape(SEGMENT_HEIGHT / 2))
+                    .clip(MaterialTheme.shapes.extraLarge)
                     .background(fill),
             )
         }
@@ -394,12 +396,11 @@ private fun detailRows(build: BuildRecord): List<@Composable () -> Unit> = listO
 /** One line of the log. The first and last lines round the panel's top and bottom corners. */
 @Composable
 private fun LogLine(text: String, index: Int, isFirst: Boolean, isLast: Boolean) {
-    val corner = LOG_CORNER
-    val shape = RoundedCornerShape(
-        topStart = if (isFirst) corner else 0.dp,
-        topEnd = if (isFirst) corner else 0.dp,
-        bottomStart = if (isLast) corner else 0.dp,
-        bottomEnd = if (isLast) corner else 0.dp,
+    val shape = segmentedShape(
+        isFirst = isFirst,
+        isLast = isLast,
+        outer = MaterialTheme.shapes.small.topStart,
+        inner = ZeroCornerSize,
     )
     Text(
         text = text,
@@ -488,11 +489,9 @@ private const val SCROLL_TO_LOG_END_PX = 1_000_000f
 private val PAGE_GUTTER = 16.dp
 private val JUMP_BOTTOM_PADDING = 16.dp
 private val SECTION_GAP = 10.dp
-private val CARD_CORNER = 14.dp
 private val CARD_PADDING = 14.dp
 private val SEGMENT_GAP = 4.dp
 private val SEGMENT_HEIGHT = 5.dp
 private const val CURRENT_SEGMENT_ALPHA = 0.5f
 private const val OUTLINE_ALPHA = 0.6f
-private val LOG_CORNER = 10.dp
 private val LOG_PADDING = 12.dp

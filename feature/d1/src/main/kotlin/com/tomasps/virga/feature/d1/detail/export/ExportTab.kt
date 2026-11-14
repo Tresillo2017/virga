@@ -13,7 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -74,11 +75,12 @@ private fun OptionRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun RunningView(status: String?, onStop: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CircularProgressIndicator(modifier = Modifier.padding(4.dp))
+            LoadingIndicator(modifier = Modifier.padding(4.dp))
             Text(stringResource(R.string.d1_export_running, stringResource(exportProgressLabelRes(status))))
         }
         OutlinedButton(onClick = onStop) { Text(stringResource(R.string.d1_export_stop)) }

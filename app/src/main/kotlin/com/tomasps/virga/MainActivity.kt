@@ -2,10 +2,10 @@ package com.tomasps.virga
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.fragment.app.FragmentActivity
 import com.tomasps.virga.core.auth.session.SessionRepository
 import com.tomasps.virga.core.navigation.DeepLinks
 import com.tomasps.virga.core.navigation.PendingNavigation
@@ -14,7 +14,8 @@ import com.tomasps.virga.shell.VirgaRoot
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.koin.android.ext.android.inject
 
-class MainActivity : ComponentActivity() {
+/** FragmentActivity, because the app lock prompt (androidx.biometric) needs one. */
+class MainActivity : FragmentActivity() {
 
     private val session: SessionRepository by inject()
     private val themes: ThemeRepository by inject()

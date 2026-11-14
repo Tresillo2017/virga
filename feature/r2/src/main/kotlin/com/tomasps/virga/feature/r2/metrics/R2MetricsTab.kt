@@ -16,7 +16,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tomasps.virga.core.common.formatBytes
 import com.tomasps.virga.core.common.formatCompactCount
@@ -122,8 +121,7 @@ private fun OperationValues(operations: List<R2OperationCount>) {
                 Text(text = operation.action, style = MaterialTheme.typography.bodyMedium)
                 Text(
                     text = formatCompactCount(operation.requests),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleSmall,
                 )
             }
         }
