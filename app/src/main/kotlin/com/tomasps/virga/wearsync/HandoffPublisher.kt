@@ -94,10 +94,7 @@ class HandoffPublisher(
     private suspend fun sync(onlyPendingClear: Boolean = false): Boolean = gate.withLock {
         when (val state = session.state.value) {
             SessionState.Restoring -> true
-            SessionState.SignedOut -> {
-                heartbeat.cancel()
-                clearWatch(force = onlyPendingClear)
-            }
+            SessionState.SignedOut -> clearThenStopHeartbeat(force = onlyPendingClear)
             is SessionState.SignedIn -> syncSignedIn(state, onlyPendingClear)
         }
     }
@@ -105,10 +102,7 @@ class HandoffPublisher(
     private suspend fun syncSignedIn(state: SessionState.SignedIn, onlyPendingClear: Boolean): Boolean =
         when (watchPresence()) {
             WatchPresence.Unknown -> true
-            WatchPresence.Absent -> {
-                heartbeat.cancel()
-                clearWatch(force = onlyPendingClear)
-            }
+            WatchPresence.Absent -> clearThenStopHeartbeat(force = onlyPendingClear)
             // Signed in again: the next publish resets a pending clear once it actually lands.
             WatchPresence.Present -> if (onlyPendingClear) {
                 true
@@ -117,6 +111,16 @@ class HandoffPublisher(
                 publish(state)
             }
         }
+
+    /**
+     * Clears first: when this runs inside the heartbeat worker, cancelling the heartbeat cancels that running worker,
+     * which would otherwise abort the clear mid-flight and leave the item in Play services storage.
+     */
+    private suspend fun clearThenStopHeartbeat(force: Boolean): Boolean {
+        val done = clearWatch(force)
+        heartbeat.cancel()
+        return done
+    }
 
     private suspend fun watchPresence(): WatchPresence = try {
         if (watchApp.hasWatchApp()) WatchPresence.Present else WatchPresence.Absent
