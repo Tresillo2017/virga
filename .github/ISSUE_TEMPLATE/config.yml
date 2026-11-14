@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Tresillo2017/virga/security/advisories/new
+    about: Report privately. Please do not open a public issue for security problems.
+  - name: Something the Cloudflare API does not support
+    url: https://community.cloudflare.com/
+    about: Virga only uses the public Cloudflare API. Missing API features are best requested from Cloudflare.
