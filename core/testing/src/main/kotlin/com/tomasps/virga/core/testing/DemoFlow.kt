@@ -5,6 +5,7 @@ package com.tomasps.virga.core.testing
 import android.content.Context
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -21,6 +22,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import androidx.compose.ui.test.waitUntilDoesNotExist
@@ -152,14 +154,16 @@ class DemoFlow(
     }
 
     /**
-     * Taps the clickable element that shows [text] (a list row, button or chip). Waits for it first. A tap is sent at the
-     * element's centre, so an element below the fold of a scrolling column is scrolled into view before the tap.
+     * Taps the clickable element that shows [text] (a list row, button or chip). Waits for it first. The click is sent to the
+     * element itself; an element below the fold of a scrolling column is scrolled into view first.
      */
     fun clickText(text: String) {
         waitForText(text)
         val target = compose.onNode(hasText(text) and hasClickAction())
         if (isInsideScrollable(target.fetchSemanticsNode())) target.performScrollTo()
-        target.performClick()
+        // The click goes through the node's click action, not injected touch events. Two injected taps in quick
+        // succession were sometimes dropped on slower machines, which made flows fail for timing reasons only.
+        target.performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
     }
 
