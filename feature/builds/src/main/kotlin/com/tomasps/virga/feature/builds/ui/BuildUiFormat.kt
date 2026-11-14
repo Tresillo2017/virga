@@ -39,6 +39,9 @@ internal fun statusLabelRes(record: BuildRecord): Int {
 /** Short build id for display. The full UUID is still used for every call. */
 internal fun shortBuildId(buildUuid: String): String = buildUuid.take(SHORT_ID_LENGTH)
 
+/** The short id to show, or null when the build has none (the demo builds carry no uuid). */
+internal fun shortBuildIdOrNull(buildUuid: String): String? = shortBuildId(buildUuid).ifBlank { null }
+
 private const val SHORT_ID_LENGTH = 8
 
 /** Characters of a commit hash shown in a list row. The full hash stays on the detail screen. */

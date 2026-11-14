@@ -31,7 +31,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // A recreated activity (rotation, font scale, theme) does not replay the Compose splash, which VirgaRoot
         // remembers as finished. Without this, the system splash would wait for a callback that never comes.
-        if (savedInstanceState != null) composeSplashStarted.value = true
+        // The system splash is not shown again, so the Compose splash never waits for its hand-off after a recreation.
+        if (savedInstanceState != null) {
+            composeSplashStarted.value = true
+            composeSplashVisible.value = true
+        }
         enableEdgeToEdge()
         // Released once the Compose splash is on screen. The Compose splash itself holds until the session is restored.
         systemSplash.setKeepOnScreenCondition { !composeSplashStarted.value }

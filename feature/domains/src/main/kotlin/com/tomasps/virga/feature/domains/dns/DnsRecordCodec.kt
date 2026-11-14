@@ -86,7 +86,14 @@ fun DnsRecord.toForm(): DnsRecordForm {
 fun DnsRecord.displayValue(): String {
     content?.takeIf { it.isNotBlank() }?.let { return it }
     val fields = data ?: return ""
-    val type = DnsRecordType.fromWire(type)
+    return structuredValueText(DnsRecordType.fromWire(type), fields)
+}
+
+/**
+ * The structured `data` of a record joined as one zone-file value, in the form's field order. CAA quotes its value.
+ * Shared by the list row and the BIND export so both show the same text.
+ */
+fun structuredValueText(type: DnsRecordType?, fields: JsonObject): String {
     val keys = type?.dataFields?.takeIf { it.isNotEmpty() } ?: fields.keys.toList()
     return keys.mapNotNull { key ->
         val text = (fields[key] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: return@mapNotNull null

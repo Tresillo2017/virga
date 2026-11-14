@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.tomasps.virga.core.navigation.LocalNavigator
 import com.tomasps.virga.core.ui.components.DestructiveMenuItem
 import com.tomasps.virga.core.ui.components.KeyValueRow
+import com.tomasps.virga.core.ui.components.SectionCard
 import com.tomasps.virga.core.ui.components.VirgaTabRow
 import com.tomasps.virga.core.ui.dialogs.TypedNameConfirmDialog
 import com.tomasps.virga.core.ui.scaffold.ScreenScaffold
@@ -104,13 +105,14 @@ internal fun R2BucketRoute(bucketName: String) {
 
 @Composable
 private fun BucketHeader(info: R2BucketInfo) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        KeyValueRow(key = stringResource(R.string.r2_header_location), value = info.location?.takeIf { it.isNotBlank() }?.let { r2LocationLabel(it) } ?: "-")
-        KeyValueRow(key = stringResource(R.string.r2_header_storage_class), value = r2StorageClassLabel(info.storageClass, "-"))
-        info.jurisdiction?.takeIf { it.isNotBlank() }?.let {
-            KeyValueRow(key = stringResource(R.string.r2_header_jurisdiction), value = it)
+    val facts = buildList<@Composable () -> Unit> {
+        add { KeyValueRow(key = stringResource(R.string.r2_header_location), value = info.location?.takeIf { it.isNotBlank() }?.let { r2LocationLabel(it) } ?: "-") }
+        add { KeyValueRow(key = stringResource(R.string.r2_header_storage_class), value = r2StorageClassLabel(info.storageClass, "-")) }
+        info.jurisdiction?.takeIf { it.isNotBlank() }?.let { jurisdiction ->
+            add { KeyValueRow(key = stringResource(R.string.r2_header_jurisdiction), value = jurisdiction) }
         }
-        KeyValueRow(key = stringResource(R.string.r2_header_created), value = r2DateLabel(info.creationDate, "-"))
+        add { KeyValueRow(key = stringResource(R.string.r2_header_created), value = r2DateLabel(info.creationDate, "-")) }
     }
+    SectionCard(rows = facts, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 }
 

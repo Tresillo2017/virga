@@ -24,6 +24,7 @@ import com.tomasps.virga.core.navigation.PagesRoot
 import com.tomasps.virga.core.navigation.R2Root
 import com.tomasps.virga.core.navigation.WorkersRoot
 import com.tomasps.virga.core.ui.components.ListRow
+import com.tomasps.virga.core.ui.components.SectionCard
 import com.tomasps.virga.core.ui.scaffold.ScreenScaffold
 
 private data class HubRow(
@@ -60,18 +61,21 @@ fun StorageHubRoute() {
 
 @Composable
 private fun HubScreen(title: String, rows: List<HubRow>) {
-    val navigator = LocalNavigator.current
     ScreenScaffold(title = title) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
-            rows.forEach { row ->
-                ListRow(
-                    headline = stringResource(row.label),
-                    supporting = stringResource(row.supporting),
-                    leading = { Icon(row.icon, contentDescription = null) },
-                    trailing = { Icon(Icons.Filled.ChevronRight, contentDescription = null) },
-                    onClick = { navigator.navigate(row.key) },
-                )
-            }
+            SectionCard(rows = rows.map { row -> @Composable { HubListRow(row) } })
         }
     }
+}
+
+@Composable
+private fun HubListRow(row: HubRow) {
+    val navigator = LocalNavigator.current
+    ListRow(
+        headline = stringResource(row.label),
+        supporting = stringResource(row.supporting),
+        leading = { Icon(row.icon, contentDescription = null) },
+        trailing = { Icon(Icons.Filled.ChevronRight, contentDescription = null) },
+        onClick = { navigator.navigate(row.key) },
+    )
 }

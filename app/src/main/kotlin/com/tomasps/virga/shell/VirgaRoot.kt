@@ -1,19 +1,16 @@
 package com.tomasps.virga.shell
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import com.tomasps.virga.core.auth.session.SessionRepository
 import com.tomasps.virga.core.auth.session.SessionState
 import com.tomasps.virga.core.navigation.PendingNavigation
-import com.tomasps.virga.core.ui.brand.AnimatedSplash
+import com.tomasps.virga.core.ui.brand.DarkSplash
+import com.tomasps.virga.core.ui.brand.SplashGate
 import com.tomasps.virga.core.ui.theme.VirgaTheme
 import com.tomasps.virga.feature.account.settings.ThemeMode
 import com.tomasps.virga.feature.account.settings.ThemeRepository
@@ -38,16 +35,7 @@ fun VirgaRoot(
     splashVisible: StateFlow<Boolean>,
     onSplashStarted: () -> Unit,
 ) {
-    var animationDone by rememberSaveable { mutableStateOf(false) }
-    if (!animationDone) {
-        val visible by splashVisible.collectAsState()
-        DarkSplash(
-            holdFinalFrame = false,
-            startWhen = visible,
-            onStarted = onSplashStarted,
-            onFinished = { animationDone = true },
-        )
-    } else {
+    SplashGate(splashVisible, onSplashStarted) {
         AfterSplash(sessionProvider, themesProvider, pending)
     }
 }
@@ -83,27 +71,11 @@ private fun ShellGate(session: SessionRepository, themes: ThemeRepository, pendi
     if (resolvedMode == null || sessionState == SessionState.Restoring) {
         DarkSplash(holdFinalFrame = true)
     } else {
-        VirgaTheme(darkTheme = resolvedMode.isDark(isSystemInDarkTheme())) {
+        val isDark = resolvedMode.isDark(isSystemInDarkTheme())
+        SystemBarAppearance(isDark = isDark)
+        VirgaTheme(darkTheme = isDark) {
             ShellHost(sessionState, pending)
         }
-    }
-}
-
-@Composable
-private fun DarkSplash(
-    holdFinalFrame: Boolean,
-    startWhen: Boolean = true,
-    onStarted: () -> Unit = {},
-    onFinished: () -> Unit = {},
-) {
-    VirgaTheme(darkTheme = true) {
-        AnimatedSplash(
-            modifier = Modifier.fillMaxSize(),
-            holdFinalFrame = holdFinalFrame,
-            startWhen = startWhen,
-            onStarted = onStarted,
-            onFinished = onFinished,
-        )
     }
 }
 

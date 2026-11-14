@@ -228,7 +228,7 @@ private fun HomeBody(state: HomeUiState, padding: PaddingValues, actions: HomeAc
         verticalArrangement = Arrangement.spacedBy(LIST_SPACING),
     ) {
         item { HomeSearch(search = state.search, actions = actions) }
-        item { SectionHeader(title = stringResource(R.string.home_section_analytics)) }
+        item { SectionHeader(title = stringResource(R.string.home_section_analytics), alignToCardEdge = true) }
         item {
             HomeAnalyticsSection(
                 analytics = state.analytics,

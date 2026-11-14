@@ -118,7 +118,7 @@ fun BuildDetailRoute(key: BuildDetail) {
     val title = (state.build as? UiState.Content)?.data?.scriptName ?: key.workerName
     val subtitle = (state.build as? UiState.Content)?.data?.let { build ->
         listOfNotNull(
-            stringResource(R.string.builds_build_id, shortBuildId(build.buildUuid)),
+            shortBuildIdOrNull(build.buildUuid)?.let { stringResource(R.string.builds_build_id, it) },
             build.branch,
         ).joinToString(separator = " · ")
     }

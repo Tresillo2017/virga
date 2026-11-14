@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -21,8 +20,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeoutOrNull
 
 private val MARK_SPLASH_SIZE = 120.dp
 private val MARK_TO_WORDMARK_GAP = 16.dp
@@ -72,7 +69,7 @@ fun AnimatedSplash(
         // its exit is what sets startWhen; waiting for startWhen first would wait on itself.
         withFrameNanos { }
         currentOnStarted()
-        withTimeoutOrNull(SplashTimeline.MAX_WAIT_FOR_START_MS) { snapshotFlow { currentStartWhen }.first { it } }
+        awaitStartSignal { currentStartWhen }
         val clockStartNanos = withFrameNanos { it }
         val handOffMs = SplashTimeline.handOffMs(VirgaMarkGeometry.STREAK_COUNT).toLong()
         while (true) {
@@ -96,5 +93,18 @@ fun AnimatedSplash(
         )
         Spacer(Modifier.height(MARK_TO_WORDMARK_GAP))
         VirgaWordmark(alpha = SplashTimeline.wordmarkProgress(elapsedMs))
+    }
+}
+
+/**
+ * Waits until [isReleased] is true, or until [SplashTimeline.MAX_WAIT_FOR_START_MS] of frame time has passed. Counts
+ * frames rather than delay time, so the wait is the same on a device and under the test clock.
+ */
+private suspend fun awaitStartSignal(isReleased: () -> Boolean) {
+    var waitStartNanos = -1L
+    while (!isReleased()) {
+        val nowNanos = withFrameNanos { it }
+        if (waitStartNanos < 0L) waitStartNanos = nowNanos
+        if ((nowNanos - waitStartNanos) / NANOS_PER_MILLI >= SplashTimeline.MAX_WAIT_FOR_START_MS) return
     }
 }

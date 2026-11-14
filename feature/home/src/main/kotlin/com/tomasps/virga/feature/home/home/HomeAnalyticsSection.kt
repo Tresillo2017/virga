@@ -51,7 +51,8 @@ private const val MIN_SPARKLINE_POINTS = 3
 private const val CHANGE_EPSILON = 0.005
 private const val TILE_COLUMNS = 2
 private const val DURATION_DECIMALS = "%.1f"
-private val NOTE_HORIZONTAL_PADDING = 16.dp
+/** Notes sit on the card edge, the same as the section headers above them. */
+private val NOTE_HORIZONTAL_PADDING = 0.dp
 private val INFO_BUTTON_SIZE = 40.dp
 
 /** One tile's spec, resolved to strings and values in the composable. */

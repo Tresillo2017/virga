@@ -2,6 +2,7 @@ package com.tomasps.virga.feature.workers.detail
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Switch
@@ -112,7 +113,11 @@ internal fun DomainsTab(
             SectionCard(rows = customDomainRows(snapshot, isBusy, onRemove = { pending = PendingDomainAction.RemoveDomain(it) }))
         }
         item {
-            TextButton(enabled = !isBusy, onClick = { adding = true }) { Text(stringResource(R.string.workers_domains_add)) }
+            TextButton(
+                enabled = !isBusy,
+                onClick = { adding = true },
+                contentPadding = PaddingValues(horizontal = 0.dp),
+            ) { Text(stringResource(R.string.workers_domains_add)) }
         }
         item { SectionHeader(title = stringResource(R.string.workers_domains_routes)) }
         item {

@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.tomasps.virga.core.ui.components.KeyValueRow
+import com.tomasps.virga.core.ui.components.SectionCard
 import com.tomasps.virga.core.ui.components.SectionHeader
 import com.tomasps.virga.core.ui.dialogs.TypedNameConfirmDialog
 import com.tomasps.virga.core.ui.state.UiState
@@ -47,7 +48,7 @@ internal fun TimeTravelTab(state: TimeTravelUiState, callbacks: TimeTravelCallba
     ) {
         SectionHeader(title = stringResource(R.string.d1_time_travel_current))
         UiStateContent(state = state.currentBookmark, onRetry = callbacks.onRefresh) { bookmark ->
-            KeyValueRow(key = stringResource(R.string.d1_bookmark_label), value = bookmark)
+            SectionCard(rows = listOf({ KeyValueRow(key = stringResource(R.string.d1_bookmark_label), value = bookmark) }))
         }
         Text(stringResource(R.string.d1_time_travel_intro), style = MaterialTheme.typography.bodySmall)
 
@@ -69,7 +70,7 @@ internal fun TimeTravelTab(state: TimeTravelUiState, callbacks: TimeTravelCallba
             canRestore = state.lookupInput.isNotBlank(),
         )
         state.lookupBookmark?.let { bookmark ->
-            KeyValueRow(key = stringResource(R.string.d1_bookmark_label), value = bookmark)
+            SectionCard(rows = listOf({ KeyValueRow(key = stringResource(R.string.d1_bookmark_label), value = bookmark) }))
             OutlinedButton(onClick = { callbacks.onRestoreBookmark(bookmark) }) {
                 Text(stringResource(R.string.d1_time_travel_restore_bookmark))
             }

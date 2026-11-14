@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.tomasps.virga.core.navigation.LocalNavigator
 import com.tomasps.virga.core.navigation.PagesProject
 import com.tomasps.virga.core.ui.components.ListRow
+import com.tomasps.virga.core.ui.components.SectionCard
 import com.tomasps.virga.core.ui.components.OpenInDashboardRow
 import com.tomasps.virga.core.ui.components.SearchField
 import com.tomasps.virga.core.ui.components.StatusDot
@@ -98,8 +99,11 @@ private fun ProjectsContent(
                 )
             }
         } else {
-            items(visible, key = { it.name }) { project ->
-                ProjectRow(project = project, onClick = { onOpen(project.name) })
+            item {
+                SectionCard(
+                    rows = visible.map { project -> @Composable { ProjectRow(project, onClick = { onOpen(project.name) }) } },
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
             }
         }
         item {

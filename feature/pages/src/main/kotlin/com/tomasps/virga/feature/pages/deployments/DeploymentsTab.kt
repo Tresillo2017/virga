@@ -1,9 +1,11 @@
 package com.tomasps.virga.feature.pages.deployments
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -11,11 +13,13 @@ import androidx.compose.runtime.Composable
 import com.tomasps.virga.core.common.formatIsoDate
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.tomasps.virga.core.navigation.LocalNavigator
 import com.tomasps.virga.core.ui.components.ListRow
+import com.tomasps.virga.core.ui.components.SectionCard
 import com.tomasps.virga.core.ui.components.LoadMoreFooter
 import com.tomasps.virga.core.ui.components.LoadMoreState
 import com.tomasps.virga.core.ui.components.StatusDot
@@ -54,11 +58,18 @@ fun DeploymentsTab(projectName: String) {
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(list, key = { it.id }) { deployment ->
-                        DeploymentRow(
-                            deployment = deployment,
-                            isCurrent = deployment.id == state.currentProductionId,
-                            onClick = { navigator.navigate(PagesDeploymentDetail(projectName, deployment.id)) },
+                    item {
+                        SectionCard(
+                            rows = list.map { deployment ->
+                                @Composable {
+                                    DeploymentRow(
+                                        deployment = deployment,
+                                        isCurrent = deployment.id == state.currentProductionId,
+                                        onClick = { navigator.navigate(PagesDeploymentDetail(projectName, deployment.id)) },
+                                    )
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = SCREEN_GUTTER, vertical = CARD_VERTICAL_SPACING),
                         )
                     }
                     item {
@@ -77,6 +88,10 @@ fun DeploymentsTab(projectName: String) {
     }
 }
 
+private val SCREEN_GUTTER = 16.dp
+private val STATUS_GAP = 8.dp
+private val CARD_VERTICAL_SPACING = 8.dp
+
 @Composable
 private fun DeploymentRow(deployment: PagesDeployment, isCurrent: Boolean, onClick: () -> Unit) {
     val status = deployment.latestStage?.status
@@ -94,8 +109,10 @@ private fun DeploymentRow(deployment: PagesDeployment, isCurrent: Boolean, onCli
         headline = if (isCurrent) stringResource(R.string.pages_deployment_current, title) else title,
         supporting = supporting,
         trailing = {
-            Text(text = statusText, style = MaterialTheme.typography.labelMedium)
-            StatusDot(tone = statusTone(status), contentDescription = statusText)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(STATUS_GAP)) {
+                Text(text = statusText, style = MaterialTheme.typography.labelMedium)
+                StatusDot(tone = statusTone(status), contentDescription = statusText)
+            }
         },
         onClick = onClick,
     )

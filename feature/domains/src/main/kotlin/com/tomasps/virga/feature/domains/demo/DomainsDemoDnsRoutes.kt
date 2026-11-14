@@ -3,6 +3,8 @@ package com.tomasps.virga.feature.domains.demo
 import com.tomasps.virga.core.network.demo.DemoReply
 import com.tomasps.virga.core.network.demo.DemoRouteRegistry
 import com.tomasps.virga.core.network.demo.InMemoryStore
+import com.tomasps.virga.feature.domains.dns.DnsRecordType
+import com.tomasps.virga.feature.domains.dns.structuredValueText
 import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -153,6 +155,14 @@ private val PROXIABLE_DEMO_TYPES = setOf("A", "AAAA", "CNAME")
 /** Fields of [patch] override the same fields here; the rest are kept. */
 private fun JsonObject.plusFields(patch: JsonObject): JsonObject = JsonObject(this + patch)
 
+/** The zone-file value of a stored record: its content, or for SRV and CAA the structured fields in zone-file order. */
+private fun bindValue(record: JsonObject, type: String): String {
+    val content = record["content"].textOrNull()
+    if (!content.isNullOrBlank()) return content
+    val data = record["data"] as? JsonObject ?: return ""
+    return structuredValueText(DnsRecordType.fromWire(type), data)
+}
+
 private fun bindExport(records: InMemoryStore<JsonObject>, zoneId: String): String {
     val rows = records.items.value
         .filterKeys { it.startsWith("$zoneId$STORE_SEPARATOR") }
@@ -162,7 +172,7 @@ private fun bindExport(records: InMemoryStore<JsonObject>, zoneId: String): Stri
             val type = record["type"].textOrNull().orEmpty()
             val name = record["name"].textOrNull().orEmpty()
             val ttl = (record["ttl"] as? JsonPrimitive)?.contentOrNull ?: "1"
-            "$name\t$ttl\tIN\t$type\t${record["content"].textOrNull().orEmpty()}"
+            "$name\t$ttl\tIN\t$type\t${bindValue(record, type)}"
         }
     return buildString {
         appendLine("; BIND zone file, exported from the demo account")

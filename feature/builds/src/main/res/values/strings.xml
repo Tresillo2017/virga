@@ -8,7 +8,7 @@
     <string name="builds_action_stop_watching">Stop watching</string>
     <string name="builds_notification_action_stop">Stop</string>
     <string name="builds_action_watch">Watch build</string>
-    <string name="builds_build_id">Build ID</string>
+    <string name="builds_build_id">Build ID %1$s</string>
     <string name="builds_cancel">Cancel</string>
     <string name="builds_cancel_keep">Keep building</string>
     <string name="builds_cancel_confirm">Cancel build</string>

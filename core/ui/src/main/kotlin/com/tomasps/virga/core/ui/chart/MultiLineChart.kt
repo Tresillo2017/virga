@@ -49,6 +49,7 @@ fun MultiLineChart(
             description = description,
             isEmpty = cleaned.all { it.points.isEmpty() },
             modifier = Modifier,
+            yDomain = domain,
             footer = { AxisLabels(labels) },
         ) {
             Canvas(Modifier.fillMaxSize()) {

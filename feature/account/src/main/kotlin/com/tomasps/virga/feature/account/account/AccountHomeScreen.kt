@@ -128,9 +128,14 @@ private fun DetailsLoading() {
 
 @Composable
 private fun AccountFacts(info: AccountDetails) {
-    Column {
-        KeyValueRow(stringResource(R.string.account_detail_id), info.id, monospaceValue = true)
-        friendlyAccountType(info.type)?.let { KeyValueRow(stringResource(R.string.account_detail_type), it) }
-        friendlyCreatedOn(info.createdOn)?.let { KeyValueRow(stringResource(R.string.account_detail_created), it) }
+    val rows = buildList<@Composable () -> Unit> {
+        add { KeyValueRow(stringResource(R.string.account_detail_id), info.id, monospaceValue = true) }
+        friendlyAccountType(info.type)?.let { type ->
+            add { KeyValueRow(stringResource(R.string.account_detail_type), type) }
+        }
+        friendlyCreatedOn(info.createdOn)?.let { created ->
+            add { KeyValueRow(stringResource(R.string.account_detail_created), created) }
+        }
     }
+    SectionCard(rows = rows)
 }

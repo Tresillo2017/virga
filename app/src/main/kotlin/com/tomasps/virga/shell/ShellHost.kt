@@ -1,5 +1,6 @@
 package com.tomasps.virga.shell
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -38,6 +39,11 @@ fun ShellHost(sessionState: SessionState, pending: PendingNavigation) {
         if (sessionState is SessionState.SignedIn) pending.keys.collect { navigator.navigate(it) }
     }
 
+    // Back on a bottom tab's root (other than Home) returns to Home. On Home the handler is off, so the system leaves the app.
+    BackHandler(enabled = shouldReturnToHome(sessionState, navigator.current, backStack.size)) {
+        navigator.replaceAll(HomeRoot)
+    }
+
     CompositionLocalProvider(LocalNavigator provides navigator) {
         Scaffold(
             bottomBar = { VirgaBottomBar(current = navigator.current, navigator = navigator) },
@@ -55,6 +61,12 @@ fun ShellHost(sessionState: SessionState, pending: PendingNavigation) {
         }
     }
 }
+
+/** True when back should land on Home: signed in, on a single-key stack whose root is not Home. */
+internal fun shouldReturnToHome(sessionState: SessionState, current: NavKey?, stackSize: Int): Boolean =
+    sessionState is SessionState.SignedIn && stackSize == ROOT_ONLY_STACK_SIZE && current != null && current != HomeRoot
+
+private const val ROOT_ONLY_STACK_SIZE = 1
 
 private fun startKeyFor(sessionState: SessionState): NavKey =
     if (sessionState is SessionState.SignedIn) HomeRoot else SignIn

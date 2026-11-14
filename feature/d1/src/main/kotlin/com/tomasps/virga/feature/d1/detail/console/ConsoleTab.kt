@@ -98,7 +98,11 @@ internal fun ConsoleTab(state: ConsoleUiState, callbacks: ConsoleCallbacks) {
         }
         if (state.history.isEmpty()) {
             item(key = "console-history-empty") {
-                Text(stringResource(R.string.d1_console_history_empty), style = MaterialTheme.typography.bodySmall)
+                Text(
+                    stringResource(R.string.d1_console_history_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
             }
         }
         items(state.history, key = { "history-$it" }) { entry ->
