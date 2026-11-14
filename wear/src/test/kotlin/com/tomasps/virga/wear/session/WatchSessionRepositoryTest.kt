@@ -190,11 +190,51 @@ class WatchSessionRepositoryTest {
     fun unauthorizedWipesVault() = runTest {
         val h = harness()
         h.repo.apply(payload())
-        h.repo.onUnauthorized()
+        h.repo.onUnauthorized(h.repo.issuedCredential()!!.generation)
 
         assertEquals(WatchSessionState.NotConnected, h.repo.state.value)
         assertNull(h.vault.read())
         assertNull(h.active.bearerToken())
+        h.stop()
+    }
+
+    @Test
+    fun unauthorizedForAReplacedTokenKeepsTheNewSession() = runTest {
+        val h = harness()
+        h.repo.apply(payload(token = "old"))
+        val oldGeneration = h.repo.issuedCredential()!!.generation
+        h.repo.apply(payload(token = "new", selected = "a2"))
+
+        h.repo.onUnauthorized(oldGeneration)
+
+        assertEquals(WatchSessionState.Connected("a2", isDemo = false), h.repo.state.value)
+        assertEquals(Credential.ApiToken("new"), h.vault.read())
+        assertEquals("new", h.active.bearerToken())
+        h.stop()
+    }
+
+    @Test
+    fun reapplyingTheSameTokenKeepsItsGenerationSoAGenuine401StillWipes() = runTest {
+        val h = harness()
+        h.repo.apply(payload(token = "tok"))
+        val sent = h.repo.issuedCredential()!!.generation
+        h.now += 1_000L
+        h.repo.apply(payload(token = "tok"))
+
+        assertEquals(sent, h.repo.issuedCredential()!!.generation)
+        h.repo.onUnauthorized(sent)
+        assertEquals(WatchSessionState.NotConnected, h.repo.state.value)
+        assertNull(h.vault.read())
+        h.stop()
+    }
+
+    @Test
+    fun aDisconnectedSessionIssuesNoCredential() = runTest {
+        val h = harness()
+        h.repo.apply(payload())
+        h.repo.clear()
+
+        assertNull(h.repo.issuedCredential())
         h.stop()
     }
 

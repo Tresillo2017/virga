@@ -41,6 +41,8 @@ import com.tomasps.virga.wear.summary.SummaryRefresher
 import com.tomasps.virga.wear.summary.SummarySource
 import com.tomasps.virga.wear.ui.BuildDetailViewModel
 import com.tomasps.virga.wear.ui.BuildListViewModel
+import com.tomasps.virga.wear.session.SentCredentialGuard
+import com.tomasps.virga.wear.session.SessionSentCredentialGuard
 import com.tomasps.virga.wear.session.StalenessGuardedCredentialProvider
 import com.tomasps.virga.wear.session.WatchSessionPrefs
 import com.tomasps.virga.wear.session.WatchSessionRepository
@@ -106,18 +108,12 @@ val wearKoinModule = module {
     single { WearDemoRoutes() } bind DemoRouteContributor::class
     single { WatchSessionRepository(get(), get(), get(), get(), System::currentTimeMillis) }
     // Enforces the 24-hour rule per request, not only when something remembers to call refreshStaleness().
-    single<CredentialProvider> { StalenessGuardedCredentialProvider(get(), get()) }
+    single<CredentialProvider> { StalenessGuardedCredentialProvider(get()) }
+    // Ties each 401 to the credential that request actually sent, so only a rejection of the token in use wipes.
+    single<SentCredentialGuard> { SessionSentCredentialGuard(get()) }
     single { BuildsRepository(get(), get()) }
     single(WATCH_SESSION_STATE) { get<WatchSessionRepository>().state }
-    single {
-        val session = get<WatchSessionRepository>()
-        val credentials = get<CredentialProvider>()
-        WearBuildsSource(
-            repository = get(),
-            onUnauthorized = { session.onUnauthorized() },
-            hasToken = { credentials.bearerToken() != null },
-        )
-    } bind WearBuilds::class
+    single { WearBuildsSource(repository = get(), credentials = get()) } bind WearBuilds::class
 }
 
 /**
@@ -128,15 +124,7 @@ val wearSurfaceKoinModule = module {
     single { LatestBuildCache(get(SURFACE_STORE)) }
     single { BuildSurfaceRefresher(get(), get(WATCH_SESSION_STATE), get(), clock = Instant::now) }
     single { SummaryCache(get(SUMMARY_STORE)) }
-    single {
-        val session = get<WatchSessionRepository>()
-        val credentials = get<CredentialProvider>()
-        SummarySource(
-            graphQl = get<CloudflareApi>().graphQl,
-            onUnauthorized = { session.onUnauthorized() },
-            hasToken = { credentials.bearerToken() != null },
-        )
-    }
+    single { SummarySource(graphQl = get<CloudflareApi>().graphQl, credentials = get()) }
     single { SummaryRefresher(get(), get(WATCH_SESSION_STATE), get(), clock = Instant::now) }
 }
 

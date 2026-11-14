@@ -6,6 +6,7 @@ import com.tomasps.virga.core.network.demo.DemoReply
 import com.tomasps.virga.core.network.testing.mockCloudflareApi
 import com.tomasps.virga.feature.builds.api.BuildsRepository
 import com.tomasps.virga.wear.builds.WearBuildsSource
+import com.tomasps.virga.wear.session.FakeSentCredentialGuard
 import com.tomasps.virga.wear.session.WatchSessionState
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CompletableDeferred
@@ -85,8 +86,7 @@ class BuildListViewModelTest {
         }
         val source = WearBuildsSource(
             repository = BuildsRepository(api),
-            onUnauthorized = { wipes++ },
-            hasToken = { true },
+            credentials = FakeSentCredentialGuard { wipes++ },
         )
         val vm = listVm(MutableStateFlow(CONNECTED), source)
         advanceUntilIdle()

@@ -8,6 +8,7 @@ import com.tomasps.virga.core.network.demo.DemoReply
 import com.tomasps.virga.core.network.testing.mockCloudflareApi
 import com.tomasps.virga.feature.builds.api.BuildsRepository
 import com.tomasps.virga.wear.builds.WearBuildsSource
+import com.tomasps.virga.wear.session.FakeSentCredentialGuard
 import com.tomasps.virga.wear.ui.ACCOUNT
 import com.tomasps.virga.wear.ui.CONNECTED
 import io.ktor.http.HttpStatusCode
@@ -72,7 +73,7 @@ class RealPathRefreshTest {
 
     private fun refresherFor(api: com.tomasps.virga.core.network.CloudflareApi, at: Instant = t1) =
         BuildSurfaceRefresher(
-            WearBuildsSource(BuildsRepository(api), onUnauthorized = {}, hasToken = { true }),
+            WearBuildsSource(BuildsRepository(api), FakeSentCredentialGuard()),
             MutableStateFlow(CONNECTED),
             cache,
             warn = {},

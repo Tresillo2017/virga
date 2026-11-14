@@ -129,7 +129,7 @@ class SessionHardeningTest {
         h.repo.apply(payload())
         h.vaultStore.failAll = true
 
-        runCatching { h.repo.onUnauthorized() }
+        runCatching { h.repo.onUnauthorized(h.repo.issuedCredential()!!.generation) }
         assertEquals(WatchSessionState.NotConnected, h.repo.state.value)
         val restarted = h.restarted()
         restarted.restore()
@@ -141,7 +141,7 @@ class SessionHardeningTest {
     fun unauthorizedClearsPrefs() = runTest {
         val h = Harness(this)
         h.repo.apply(payload())
-        h.repo.onUnauthorized()
+        h.repo.onUnauthorized(h.repo.issuedCredential()!!.generation)
 
         assertNull(h.prefs.lastCheckInMillis())
         assertNull(h.prefs.selectedAccountId())
@@ -164,7 +164,7 @@ class SessionHardeningTest {
     @Test
     fun providerServesTokenAtExactly24hAndNotAfterWhileProcessLives() = runTest {
         val h = Harness(this)
-        val provider = StalenessGuardedCredentialProvider(h.active, h.repo)
+        val provider = StalenessGuardedCredentialProvider(h.repo)
         h.repo.apply(payload())
 
         h.now = START + StalenessPolicy.MAX_OFFLINE_MILLIS
@@ -177,6 +177,25 @@ class SessionHardeningTest {
 
         h.repo.apply(payload())
         assertEquals("tok", provider.bearerToken())
+        h.stop()
+    }
+
+    @Test
+    fun providerRecordsTheGenerationItSentAndNothingWhenItSendsNothing() = runTest {
+        val h = Harness(this)
+        val provider = StalenessGuardedCredentialProvider(h.repo)
+        val guard = SessionSentCredentialGuard(h.repo)
+        assertNull(guard.track { provider.bearerToken() }.sentGeneration)
+
+        h.repo.apply(payload())
+        val sent = guard.track { provider.bearerToken() }
+        assertEquals("tok", sent.value)
+        assertEquals(h.repo.issuedCredential()!!.generation, sent.sentGeneration)
+
+        h.now = START + StalenessPolicy.MAX_OFFLINE_MILLIS + 1
+        val stale = guard.track { provider.bearerToken() }
+        assertNull(stale.value)
+        assertNull("a stale session sends nothing, so nothing can be blamed for a 401", stale.sentGeneration)
         h.stop()
     }
 

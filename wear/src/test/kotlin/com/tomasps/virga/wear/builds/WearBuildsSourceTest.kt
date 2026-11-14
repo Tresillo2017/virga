@@ -9,6 +9,8 @@ import com.tomasps.virga.core.network.demo.DemoReply
 import com.tomasps.virga.core.network.demo.DemoRouteRegistry
 import com.tomasps.virga.core.network.testing.mockCloudflareApi
 import com.tomasps.virga.feature.builds.api.BuildsRepository
+import com.tomasps.virga.wear.session.FakeSentCredentialGuard
+import com.tomasps.virga.wear.session.FakeSentCredentialGuard.Companion.SENT_GENERATION
 import io.ktor.http.HttpStatusCode
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
@@ -47,24 +49,22 @@ private fun scripts(vararg names: String) =
 
 private class Calls {
     var unauthorized = 0
+    val generations = mutableListOf<Long>()
 }
 
+/** [hasToken] false means the request sent no credential (the transport's local "no token" failure). */
 private fun source(
     api: CloudflareApi,
     calls: Calls = Calls(),
     hasToken: Boolean = true,
     onUnauthorizedFailure: Throwable? = null,
-    hasTokenFailure: Throwable? = null,
     warnings: MutableList<String> = mutableListOf(),
 ) = WearBuildsSource(
     repository = BuildsRepository(api),
-    onUnauthorized = {
+    credentials = FakeSentCredentialGuard(sent = SENT_GENERATION.takeIf { hasToken }) { generation ->
         calls.unauthorized++
+        calls.generations += generation
         onUnauthorizedFailure?.let { throw it }
-    },
-    hasToken = {
-        hasTokenFailure?.let { throw it }
-        hasToken
     },
     warn = { warnings += it },
 )
@@ -436,27 +436,12 @@ class WearBuildsSourceTest {
     }
 
     @Test
-    fun `a throwing hasToken counts as no token and does not wipe`() = runBlocking {
+    fun `a rejection reports the generation of the credential that was sent`() = runBlocking {
         val calls = Calls()
 
-        val result = source(unauthorizedApi(), calls, hasTokenFailure = IllegalStateException("keystore")).recent(ACCOUNT)
+        source(unauthorizedBuildApi(), calls).record(ACCOUNT, "api", "b-1")
 
-        assertTrue((result as ApiResult.Failure).error is ApiError.Unauthorized)
-        assertEquals(0, calls.unauthorized)
-    }
-
-    @Test
-    fun `a cancellation from hasToken propagates`() {
-        var thrown: Throwable? = null
-        try {
-            runBlocking {
-                source(unauthorizedApi(), hasTokenFailure = CancellationException("stop")).recent(ACCOUNT)
-            }
-        } catch (e: CancellationException) {
-            thrown = e
-        }
-
-        assertTrue(thrown is CancellationException)
+        assertEquals(listOf(SENT_GENERATION), calls.generations)
     }
 
     @Test

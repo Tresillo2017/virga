@@ -4,6 +4,8 @@ import android.util.Log
 import com.tomasps.virga.core.common.result.ApiError
 import com.tomasps.virga.core.common.result.ApiResult
 import com.tomasps.virga.core.network.GraphQlClient
+import com.tomasps.virga.wear.session.SentCredentialGuard
+import com.tomasps.virga.wear.session.Tracked
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonObject
 import java.time.Instant
@@ -32,27 +34,32 @@ sealed interface SummaryResult {
 
 /**
  * Reads the last 24 hours of account requests and errors. Two kinds of authorization problem reach it:
- * - a real 401 means the token was rejected; when a token was present, [onUnauthorized] wipes the session (once, as
- *   this makes a single call). The local "no token" case (stale session, handoff in progress) does not wipe.
+ * - a real 401 means the token was rejected; when a token was actually sent, [credentials] wipes the session (once, as
+ *   this makes a single call, and only while that token is still the one in use). The local "no token" case (stale
+ *   session, nothing sent) does not wipe.
  * - a 403, or an authorization error inside the GraphQL `errors` (HTTP 200), means the token works but lacks analytics
  *   access: [SummaryResult.MissingAnalyticsAccess], with no wipe.
  */
 class SummarySource(
     private val graphQl: GraphQlClient,
-    private val onUnauthorized: suspend () -> Unit = {},
-    private val hasToken: suspend () -> Boolean = { false },
+    private val credentials: SentCredentialGuard,
     private val warn: (String) -> Unit = { Log.w(TAG, it) },
 ) {
 
-    suspend fun last24h(accountId: String, now: Instant): SummaryResult =
-        when (val result = graphQl.query(SUMMARY_QUERY, summaryVariables(accountId, now), JsonObject.serializer())) {
+    suspend fun last24h(accountId: String, now: Instant): SummaryResult {
+        val tracked = credentials.track {
+            graphQl.query(SUMMARY_QUERY, summaryVariables(accountId, now), JsonObject.serializer())
+        }
+        return when (val result = tracked.value) {
             is ApiResult.Success -> parseSummary(result.value)?.let { SummaryResult.Ok(it) }
                 ?: SummaryResult.Failed(ApiError.Decode("summary response has no viewer"))
-            is ApiResult.Failure -> failed(result.error)
+            is ApiResult.Failure -> failed(result.error, tracked)
         }
+    }
 
-    private suspend fun failed(error: ApiError): SummaryResult {
-        if (error is ApiError.Unauthorized && tokenWasPresent()) wipeSession()
+    private suspend fun failed(error: ApiError, tracked: Tracked<*>): SummaryResult {
+        val sent = tracked.sentGeneration
+        if (error is ApiError.Unauthorized && sent != null) wipeSession(sent)
         return if (isMissingAccess(error)) SummaryResult.MissingAnalyticsAccess else SummaryResult.Failed(error)
     }
 
@@ -63,18 +70,9 @@ class SummarySource(
         return !text.contains(RATE_LIMIT_MARKER) && AUTH_MARKERS.any(text::contains)
     }
 
-    /** A token check that fails (storage trouble) counts as no token: never wipe on a guess. */
-    private suspend fun tokenWasPresent(): Boolean = try {
-        hasToken()
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (@Suppress("TooGenericExceptionCaught") failure: Exception) {
-        false
-    }
-
-    private suspend fun wipeSession() {
+    private suspend fun wipeSession(generation: Long) {
         try {
-            onUnauthorized()
+            credentials.onRejected(generation)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (@Suppress("TooGenericExceptionCaught") failure: Exception) {

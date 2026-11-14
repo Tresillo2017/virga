@@ -8,7 +8,8 @@ import com.tomasps.virga.core.common.result.map
 import com.tomasps.virga.feature.builds.api.BuildRecord
 import com.tomasps.virga.feature.builds.api.BuildsRepository
 import com.tomasps.virga.feature.builds.api.WorkerRef
-import java.util.concurrent.atomic.AtomicBoolean
+import com.tomasps.virga.wear.session.SentCredentialGuard
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -24,14 +25,13 @@ private const val FIRST_PAGE = 1
 private const val TAG = "WearBuildsSource"
 
 /**
- * The watch's build data. Reads go through [BuildsRepository]. A 401 on a token that was present wipes the watch
- * session through [onUnauthorized]; the local "no token" failure (stale session, handoff in progress) does not,
- * which [hasToken] tells apart.
+ * The watch's build data. Reads go through [BuildsRepository]. A 401 for a token that was actually sent wipes the
+ * watch session through [credentials], which also ignores it when that token has since been replaced; the local
+ * "no token" failure (stale session, nothing sent) never wipes.
  */
 class WearBuildsSource(
     private val repository: BuildsRepository,
-    private val onUnauthorized: suspend () -> Unit,
-    private val hasToken: suspend () -> Boolean,
+    private val credentials: SentCredentialGuard,
     private val warn: (String) -> Unit = { Log.w(TAG, it) },
 ) : WearBuilds {
 
@@ -129,31 +129,27 @@ class WearBuildsSource(
 
     private fun BuildRecord.toSummaryWithTag(tag: String): BuildSummary = toSummary().copy(workerTag = tag)
 
-    /** One top-level call. Several of its requests can be rejected at once, but the session is wiped only once. */
+    /**
+     * One top-level call. Several of its requests can be rejected at once, but each sent credential is reported only
+     * once, so the session is wiped once.
+     */
     private class Operation {
-        private val wiped = AtomicBoolean(false)
-        fun claimWipe(): Boolean = wiped.compareAndSet(false, true)
+        private val reported = ConcurrentHashMap.newKeySet<Long>()
+        fun claimWipe(generation: Long): Boolean = reported.add(generation)
     }
 
     private suspend fun <T> guarded(op: Operation, call: suspend () -> ApiResult<T>): ApiResult<T> {
-        val result = call()
+        val tracked = credentials.track(call)
+        val result = tracked.value
+        val sent = tracked.sentGeneration
         val rejected = result is ApiResult.Failure && result.error is ApiError.Unauthorized
-        if (rejected && tokenWasPresent() && op.claimWipe()) wipeSession()
+        if (rejected && sent != null && op.claimWipe(sent)) wipeSession(sent)
         return result
     }
 
-    /** A token check that fails (storage trouble) counts as no token: never wipe on a guess. */
-    private suspend fun tokenWasPresent(): Boolean = try {
-        hasToken()
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (failure: Exception) {
-        false
-    }
-
-    private suspend fun wipeSession() {
+    private suspend fun wipeSession(generation: Long) {
         try {
-            onUnauthorized()
+            credentials.onRejected(generation)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: Exception) {

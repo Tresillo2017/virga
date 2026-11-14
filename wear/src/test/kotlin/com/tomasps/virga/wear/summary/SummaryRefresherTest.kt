@@ -8,6 +8,7 @@ import com.tomasps.virga.core.network.CloudflareApi
 import com.tomasps.virga.core.network.RateLimiter
 import com.tomasps.virga.core.network.demo.DemoReply
 import com.tomasps.virga.core.network.testing.mockCloudflareApi
+import com.tomasps.virga.wear.session.FakeSentCredentialGuard
 import com.tomasps.virga.wear.session.WatchSessionState
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CompletableDeferred
@@ -76,7 +77,7 @@ class SummaryRefresherTest {
         onWipe: () -> Unit = {},
         warn: (String) -> Unit = {},
     ) = SummaryRefresher(
-        SummarySource(api.graphQl, onUnauthorized = { onWipe() }, hasToken = { true }, warn = {}),
+        SummarySource(api.graphQl, FakeSentCredentialGuard { onWipe() }, warn = {}),
         session,
         summaryCache,
         warn,

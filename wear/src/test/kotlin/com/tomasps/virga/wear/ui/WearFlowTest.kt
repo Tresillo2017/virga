@@ -27,6 +27,7 @@ import com.tomasps.virga.feature.builds.demo.BuildsDemoRoutes
 import com.tomasps.virga.wear.WATCH_SESSION_STATE
 import com.tomasps.virga.wear.builds.WearBuilds
 import com.tomasps.virga.wear.builds.WearBuildsSource
+import com.tomasps.virga.wear.session.FakeSentCredentialGuard
 import com.tomasps.virga.wear.demo.WearDemoRoutes
 import com.tomasps.virga.wear.session.WatchSessionState
 import com.tomasps.virga.wear.wearUiKoinModule
@@ -84,7 +85,7 @@ class WearFlowTest {
                     single { WearDemoRoutes() } bind DemoRouteContributor::class
                     single { BuildsRepository(get(), get()) }
                     single<com.tomasps.virga.wear.alerts.WatchStarter> { FakeWatchStarter() }
-                    single<WearBuilds> { scripted ?: WearBuildsSource(get(), onUnauthorized = {}, hasToken = { true }) }
+                    single<WearBuilds> { scripted ?: WearBuildsSource(get(), FakeSentCredentialGuard()) }
                     single<StateFlow<WatchSessionState>>(WATCH_SESSION_STATE) { session }
                 },
                 wearUiKoinModule,

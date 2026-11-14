@@ -35,7 +35,15 @@ class WatchSessionRepository(
     @Volatile
     private var checkInMillis: Long? = null
 
+    /** The token in use with its generation, as one value so a reader never pairs a token with another's generation. */
+    @Volatile
+    private var issued: IssuedCredential? = null
+    private var lastGeneration = 0L
+
     fun isCheckInStale(): Boolean = StalenessPolicy.isStale(checkInMillis, clock())
+
+    /** The credential requests may use right now, or null. Staleness is the provider's check, not this one's. */
+    fun issuedCredential(): IssuedCredential? = issued
 
     /** Never throws except on cancellation: a failed restore settles as [WatchSessionState.NotConnected]. */
     suspend fun restore() = lock.withLock {
@@ -50,8 +58,10 @@ class WatchSessionRepository(
 
     /**
      * A payload with no token that is not demo is treated as [clear]. Metadata is written in a crash-safe order: the
-     * check-in is cleared first, then the vault, then the metadata, so a failure part-way restores as Stale or
+     * check-in is cleared first on disk, then the vault, then the metadata, so a failure part-way restores as Stale or
      * NotConnected and never as Connected with a mix of old and new data. A storage failure disconnects and rethrows.
+     * The in-memory session keeps serving the previous credential until the new one is committed, so requests that
+     * overlap a slow write neither stall on the lock nor fail locally.
      */
     suspend fun apply(payload: HandoffPayload) = lock.withLock {
         val credential = credentialOf(payload)
@@ -60,7 +70,6 @@ class WatchSessionRepository(
             return@withLock
         }
         try {
-            checkInMillis = null
             prefs.clearCheckIn()
             check(vault.write(credential)) { "vault write failed" }
             val accountIds = payload.accounts.map { it.id }.toSet()
@@ -71,6 +80,7 @@ class WatchSessionRepository(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
+            checkInMillis = null
             deactivate(WatchSessionState.NotConnected)
             throw error
         }
@@ -78,8 +88,13 @@ class WatchSessionRepository(
 
     suspend fun clear() = lock.withLock { wipe() }
 
-    /** The API rejected the token: it is revoked or expired, so keep nothing. */
-    suspend fun onUnauthorized() = lock.withLock { wipe() }
+    /**
+     * The API rejected the credential of [sentGeneration]: it is revoked or expired, so keep nothing. A rejection of a
+     * credential that has since been replaced or cleared changes nothing, so it cannot wipe a newer session.
+     */
+    suspend fun onUnauthorized(sentGeneration: Long) = lock.withLock {
+        if (issued?.generation == sentGeneration) wipe()
+    }
 
     /** Moves a connected session to [WatchSessionState.Stale] once the 24-hour window has passed. */
     suspend fun refreshStaleness() = lock.withLock {
@@ -114,15 +129,21 @@ class WatchSessionRepository(
             return
         }
         val isDemo = credential == Credential.Demo
-        active.use((credential as? Credential.ApiToken)?.token)
+        useToken((credential as? Credential.ApiToken)?.token)
         demoMode.setEnabled(isDemo)
         mutableState.value = WatchSessionState.Connected(selectedAccountId, isDemo)
     }
 
     private fun deactivate(next: WatchSessionState) {
-        active.use(null)
+        useToken(null)
         demoMode.setEnabled(false)
         mutableState.value = next
+    }
+
+    /** A new generation only when the token itself changes, so re-applying the same token keeps its generation. */
+    private fun useToken(token: String?) {
+        if (token != issued?.token) issued = token?.let { IssuedCredential(it, ++lastGeneration) }
+        active.use(token)
     }
 
     /**

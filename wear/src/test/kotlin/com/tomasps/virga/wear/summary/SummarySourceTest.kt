@@ -7,6 +7,7 @@ import com.tomasps.virga.core.network.testing.mockCloudflareApi
 import com.tomasps.virga.wear.demo.DEMO_SUMMARY_ERRORS
 import com.tomasps.virga.wear.demo.DEMO_SUMMARY_REQUESTS
 import com.tomasps.virga.wear.demo.WearDemoRoutes
+import com.tomasps.virga.wear.session.FakeSentCredentialGuard
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -30,7 +31,11 @@ class SummarySourceTest {
         api: CloudflareApi,
         hasToken: Boolean = true,
         onWipe: () -> Unit = {},
-    ) = SummarySource(api.graphQl, onUnauthorized = { onWipe() }, hasToken = { hasToken }, warn = {})
+    ) = SummarySource(
+        api.graphQl,
+        FakeSentCredentialGuard(sent = FakeSentCredentialGuard.SENT_GENERATION.takeIf { hasToken }) { onWipe() },
+        warn = {},
+    )
 
     private fun apiAnswering(handler: () -> DemoReply) = mockCloudflareApi {
         graphQl(SUMMARY_OPERATION) { handler() }
