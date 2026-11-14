@@ -44,8 +44,8 @@ class BuildSurfaceRefresher(
             is WatchSessionState.Connected -> state
             WatchSessionState.Stale -> return reconnect()
             WatchSessionState.NotConnected -> return notConnected()
-            // Restoring never settled: the session is unknown, so show nothing but keep the cache.
-            WatchSessionState.Restoring -> return SurfaceData(null, null, SurfaceStatus.NotConnected)
+            // Restoring never settled: the session is unknown, so it must not say "Setup". Show "No data", keep the cache.
+            WatchSessionState.Restoring -> return SurfaceData(null, null, SurfaceStatus.Stale)
         }
         val result = source.latest(connected.accountId)
         if (session.value != connected) return reconnect()

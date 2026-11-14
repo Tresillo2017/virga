@@ -146,20 +146,24 @@ class BuildSurfaceRefreshTest {
     }
 
     @Test
-    fun restoringSessionThatNeverSettlesShowsNothingWithoutNetworkAndKeepsTheCache() = runTest {
+    fun restoringSessionThatNeverSettlesIsUnknownSoItShowsNoDataAndKeepsTheCache() = runTest {
         cache.save(ACCOUNT, false, build("b-1"), t0)
         session.value = WatchSessionState.Restoring
 
-        assertEquals(SurfaceStatus.NotConnected, refresher.refresh().status)
+        val data = refresher.refresh()
+
+        assertEquals(SurfaceData(null, null, SurfaceStatus.Stale), data)
+        assertEquals(NO_DATA_TITLE, complicationForSurface(data, t0).title)
+        assertEquals(NO_DATA_TITLE, tileForSurface(data, t0).workerName)
         assertTrue(source.calls.isEmpty())
         assertEquals("b-1", cache.load()!!.build.buildUuid)
     }
 
-    @Test
-    fun accountSwitchDuringTheCallReturnsReconnectAndNoData() = runTest {
+    private suspend fun assertSwitchDuringCallReconnects(to: WatchSessionState.Connected) {
+        cache.save(ACCOUNT, false, build("cached-a"), t0)
         val switching = object : com.tomasps.virga.wear.builds.WearBuilds by source {
             override suspend fun latest(accountId: String): ApiResult<BuildSummary?> {
-                session.value = WatchSessionState.Connected("acc-2", isDemo = false)
+                session.value = to
                 return ApiResult.Success(build("from-a"))
             }
         }
@@ -167,6 +171,17 @@ class BuildSurfaceRefreshTest {
         val data = BuildSurfaceRefresher(switching, session, cache, warn = warnings::add) { now }.refresh()
 
         assertEquals(SurfaceData(null, null, SurfaceStatus.Reconnect), data)
+        assertNull("the old session's data is cleared, not served", cache.load())
+    }
+
+    @Test
+    fun accountSwitchDuringTheCallReturnsReconnectAndNoData() = runTest {
+        assertSwitchDuringCallReconnects(WatchSessionState.Connected("acc-2", isDemo = false))
+    }
+
+    @Test
+    fun demoFlipOnTheSameAccountDuringTheCallReturnsReconnectAndNoData() = runTest {
+        assertSwitchDuringCallReconnects(WatchSessionState.Connected(ACCOUNT, isDemo = true))
     }
 
     @Test
@@ -182,10 +197,12 @@ class BuildSurfaceRefreshTest {
     fun concurrentRefreshesRunOneFetchEach() = runTest {
         val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
         var running = 0
+        var scans = 0
         var maxRunning = 0
         val slow = object : com.tomasps.virga.wear.builds.WearBuilds by source {
             override suspend fun latest(accountId: String): ApiResult<BuildSummary?> {
                 running++
+                scans++
                 maxRunning = maxOf(maxRunning, running)
                 gate.await()
                 running--
@@ -202,6 +219,8 @@ class BuildSurfaceRefreshTest {
         second.await()
 
         assertEquals(1, maxRunning)
+        // A plain Mutex runs the callers one after the other: two scans, never overlapping (no shared in-flight result).
+        assertEquals(2, scans)
     }
 
     @Test

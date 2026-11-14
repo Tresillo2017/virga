@@ -127,6 +127,8 @@ class RealPathRefreshTest {
 
         assertEquals(SurfaceStatus.Stale, data.status)
         assertEquals("cached", data.latest!!.buildUuid)
+        assertEquals(t0, data.fetchedAt)
+        assertEquals("cached", cache.load()!!.build.buildUuid)
     }
 
     @Test
@@ -157,5 +159,58 @@ class RealPathRefreshTest {
 
         assertEquals("tag-b-1", data.latest!!.buildUuid)
         assertEquals(SurfaceStatus.Fresh, data.status)
+    }
+
+    @Test
+    fun workerWithoutABuildsConnectionIsSkippedWhenAnotherHasABuild() = runTest {
+        val api = mockCloudflareApi(rateLimiter = fastRateLimiter()) {
+            get(SCRIPTS) { DemoReply.ok(scripts("none", "ok")) }
+            get(BUILDS) { request ->
+                if (request.pathParams["workerTag"] == "tag-none") {
+                    DemoReply.failure(HttpStatusCode.NotFound, 10000, "not found")
+                } else {
+                    DemoReply.ok(json("[${buildJson("ok-1", "2026-11-14T08:00:00Z")}]"))
+                }
+            }
+        }
+
+        val data = refresherFor(api).refresh()
+
+        assertEquals(SurfaceStatus.Fresh, data.status)
+        assertEquals("ok-1", data.latest!!.buildUuid)
+    }
+
+    @Test
+    fun notFoundOnEveryWorkerIsFreshWithNoBuild() = runTest {
+        cache.save(ACCOUNT, false, cached, t0)
+        val api = mockCloudflareApi(rateLimiter = fastRateLimiter()) {
+            get(SCRIPTS) { DemoReply.ok(scripts("a", "b")) }
+            get(BUILDS) { DemoReply.failure(HttpStatusCode.NotFound, 10000, "not found") }
+        }
+
+        val data = refresherFor(api).refresh()
+
+        assertEquals(SurfaceData(null, t1, SurfaceStatus.Fresh), data)
+        assertNull(cache.load())
+    }
+
+    @Test
+    fun rateLimitOnOneWorkerStillFailsEvenWhenAnotherIsNotFound() = runTest {
+        cache.save(ACCOUNT, false, cached, t0)
+        val api = mockCloudflareApi(rateLimiter = fastRateLimiter()) {
+            get(SCRIPTS) { DemoReply.ok(scripts("none", "limited")) }
+            get(BUILDS) { request ->
+                if (request.pathParams["workerTag"] == "tag-none") {
+                    DemoReply.failure(HttpStatusCode.NotFound, 10000, "not found")
+                } else {
+                    DemoReply.failure(HttpStatusCode.TooManyRequests, 971, "rate limited")
+                }
+            }
+        }
+
+        val data = refresherFor(api).refresh()
+
+        assertEquals(SurfaceStatus.Stale, data.status)
+        assertEquals("cached", data.latest!!.buildUuid)
     }
 }

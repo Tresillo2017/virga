@@ -51,7 +51,8 @@ class WearBuildsSource(
 
     /**
      * The newest build, strictly: fails with the first error when the Worker list or ANY Worker's builds call failed,
-     * so a missing Worker is never mistaken for "no builds" or hides a newer build. Success(null) means every call
+     * so a missing Worker is never mistaken for "no builds" or hides a newer build. Only NotFound counts as "this Worker
+     * has no builds". Success(null) means every call
      * succeeded and the account has no builds.
      */
     override suspend fun latest(accountId: String): ApiResult<BuildSummary?> {
@@ -59,8 +60,10 @@ class WearBuildsSource(
             is ApiResult.Failure -> return scanned
             is ApiResult.Success -> scanned.value
         }
-        perWorker.filterIsInstance<ApiResult.Failure>().firstOrNull()?.let { return it }
-        val builds = perWorker.flatMap { (it as ApiResult.Success).value }
+        // A Worker with no Workers Builds connection answers NotFound for good; that means "no builds", not an outage.
+        val failure = perWorker.filterIsInstance<ApiResult.Failure>().firstOrNull { it.error !is ApiError.NotFound }
+        if (failure != null) return failure
+        val builds = perWorker.flatMap { (it as? ApiResult.Success)?.value.orEmpty() }
         return ApiResult.Success(newestFirst(builds).firstOrNull())
     }
 
