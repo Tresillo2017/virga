@@ -13,7 +13,15 @@ import io.ktor.http.HttpStatusCode
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellationException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -117,28 +125,76 @@ class WearBuildsSourceTest {
     }
 
     @Test
-    fun `recent fetches workers in parallel but never more than four at once`() = runBlocking(Dispatchers.Default) {
+    fun `recent holds exactly four fetches in flight and never starts a fifth`() {
         val inFlight = AtomicInteger()
         val peak = AtomicInteger()
+        val reachedFour = CountDownLatch(4)
+        val release = CountDownLatch(1)
         val names = (1..12).map { "w%02d".format(it) }
         val api = mockCloudflareApi {
             get(SCRIPTS) { DemoReply.ok(scripts(*names.toTypedArray())) }
             get(BUILDS) { request ->
                 val now = inFlight.incrementAndGet()
                 peak.accumulateAndGet(now, ::maxOf)
-                Thread.sleep(40)
+                reachedFour.countDown()
+                release.await(10, TimeUnit.SECONDS)
                 inFlight.decrementAndGet()
                 val worker = request.pathParams["workerTag"].orEmpty()
                 val minute = names.indexOf(worker.removePrefix("tag-"))
                 DemoReply.ok(json("[${buildJson(worker, "2026-11-11T10:%02d:00Z".format(minute))}]"))
             }
         }
+        // Handlers block their thread, so give the test enough threads that the bound is the semaphore, not the pool.
+        val pool = Executors.newFixedThreadPool(8)
+        try {
+            runBlocking {
+                withTimeout(30_000) {
+                    val deferred = async(pool.asCoroutineDispatcher()) { source(api).recent(ACCOUNT) }
+                    runInterruptible(Dispatchers.IO) { assertTrue(reachedFour.await(10, TimeUnit.SECONDS)) }
+                    delay(200)
+                    assertEquals(4, inFlight.get())
+                    release.countDown()
+                    val list = (deferred.await() as ApiResult.Success).value
+                    assertEquals(4, peak.get())
+                    // Order is by creation time, not by which fetch finished first.
+                    assertEquals((11 downTo 2).map { "tag-w%02d".format(it + 1) }, list.map { it.buildUuid })
+                }
+            }
+        } finally {
+            release.countDown()
+            pool.shutdownNow()
+        }
+    }
 
-        val list = (source(api).recent(ACCOUNT) as ApiResult.Success).value
+    @Test
+    fun `parallel rejected fetches wipe the session once`() {
+        val calls = Calls()
+        val reachedFour = CountDownLatch(4)
+        val release = CountDownLatch(1)
+        val api = mockCloudflareApi {
+            get(SCRIPTS) { DemoReply.ok(scripts("a", "b", "c", "d")) }
+            get(BUILDS) {
+                reachedFour.countDown()
+                release.await(10, TimeUnit.SECONDS)
+                DemoReply.failure(HttpStatusCode.Unauthorized, 10000, "bad token")
+            }
+        }
+        val pool = Executors.newFixedThreadPool(8)
+        try {
+            runBlocking {
+                withTimeout(30_000) {
+                    val deferred = async(pool.asCoroutineDispatcher()) { source(api, calls).recent(ACCOUNT) }
+                    runInterruptible(Dispatchers.IO) { assertTrue(reachedFour.await(10, TimeUnit.SECONDS)) }
+                    release.countDown()
+                    deferred.await()
+                }
+            }
+        } finally {
+            release.countDown()
+            pool.shutdownNow()
+        }
 
-        assertTrue("peak ${peak.get()}", peak.get() in 2..4)
-        // Order is by creation time, not by which fetch finished first.
-        assertEquals((11 downTo 2).map { "tag-w%02d".format(it + 1) }, list.map { it.buildUuid })
+        assertEquals(1, calls.unauthorized)
     }
 
     @Test

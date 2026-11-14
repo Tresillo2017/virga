@@ -8,6 +8,7 @@ import com.tomasps.virga.core.common.result.map
 import com.tomasps.virga.feature.builds.api.BuildRecord
 import com.tomasps.virga.feature.builds.api.BuildsRepository
 import com.tomasps.virga.feature.builds.api.WorkerRef
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -40,57 +41,69 @@ class WearBuildsSource(
      * session is wiped but the call still returns its own result: the UI reacts to the session state change.
      */
     suspend fun recent(accountId: String): ApiResult<List<BuildSummary>> {
-        val workers = when (val result = guarded { repository.workers(accountId) }) {
+        val op = Operation()
+        val workers = when (val result = guarded(op) { repository.workers(accountId) }) {
             is ApiResult.Failure -> return result
             is ApiResult.Success -> result.value
         }
         val permits = Semaphore(MAX_PARALLEL_FETCHES)
         val builds = coroutineScope {
             workers.take(MAX_WORKERS_SCANNED)
-                .map { worker -> async { permits.withPermit { buildsOf(accountId, worker) } } }
+                .map { worker -> async { permits.withPermit { buildsOf(op, accountId, worker) } } }
                 .awaitAll()
         }.flatten()
         return ApiResult.Success(builds.sortedByDescending { it.createdOn }.take(MAX_LISTED))
     }
 
     suspend fun detail(accountId: String, build: BuildSummary): ApiResult<BuildSummary> =
-        guarded { repository.build(accountId, build.buildUuid, build.scriptName) }
+        guarded(Operation()) { repository.build(accountId, build.buildUuid, build.scriptName) }
             .map { record -> record.toSummary().copy(workerTag = build.workerTag) }
 
     suspend fun cancel(accountId: String, buildUuid: String): ApiResult<Unit> =
-        guarded { repository.cancel(accountId, buildUuid) }.map { }
+        guarded(Operation()) { repository.cancel(accountId, buildUuid) }.map { }
 
     /** Whether Retry can be offered for [build], and from which trigger and target. A null plan means hide Retry. */
-    suspend fun retryPlan(accountId: String, build: BuildSummary): ApiResult<RetryPlan?> {
+    suspend fun retryPlan(accountId: String, build: BuildSummary): ApiResult<RetryPlan?> =
+        retryPlan(Operation(), accountId, build)
+
+    private suspend fun retryPlan(op: Operation, accountId: String, build: BuildSummary): ApiResult<RetryPlan?> {
         // No branch and no commit means no plan whatever the triggers say, so skip the network.
         if (RetryPlanner.targetOf(build) == null) return ApiResult.Success(null)
-        val tag = build.workerTag ?: when (val resolved = guarded { repository.tagFor(accountId, build.scriptName) }) {
+        val tag = build.workerTag ?: when (val resolved = guarded(op) { repository.tagFor(accountId, build.scriptName) }) {
             is ApiResult.Failure -> return resolved
             is ApiResult.Success -> resolved.value
         }
-        return guarded { repository.triggers(accountId, tag) }.map { RetryPlanner.plan(build, it) }
+        return guarded(op) { repository.triggers(accountId, tag) }.map { RetryPlanner.plan(build, it) }
     }
 
     /** Starts a new build for [build]. Fails locally, without a network start call, when there is no plan. */
     suspend fun retry(accountId: String, build: BuildSummary): ApiResult<String> {
-        val plan = when (val result = retryPlan(accountId, build)) {
+        val op = Operation()
+        val plan = when (val result = retryPlan(op, accountId, build)) {
             is ApiResult.Failure -> return result
             is ApiResult.Success -> result.value ?: return ApiResult.Failure(ApiError.Local("no retry plan"))
         }
-        return guarded { repository.startBuild(accountId, plan.triggerUuid, plan.target) }
+        return guarded(op) { repository.startBuild(accountId, plan.triggerUuid, plan.target) }
     }
 
-    private suspend fun buildsOf(accountId: String, worker: WorkerRef): List<BuildSummary> =
-        when (val result = guarded { repository.builds(accountId, worker.tag, worker.name, FIRST_PAGE, BUILDS_PER_WORKER) }) {
+    private suspend fun buildsOf(op: Operation, accountId: String, worker: WorkerRef): List<BuildSummary> =
+        when (val result = guarded(op) { repository.builds(accountId, worker.tag, worker.name, FIRST_PAGE, BUILDS_PER_WORKER) }) {
             is ApiResult.Failure -> emptyList()
             is ApiResult.Success -> result.value.map { it.toSummaryWithTag(worker.tag) }
         }
 
     private fun BuildRecord.toSummaryWithTag(tag: String): BuildSummary = toSummary().copy(workerTag = tag)
 
-    private suspend fun <T> guarded(call: suspend () -> ApiResult<T>): ApiResult<T> {
+    /** One top-level call. Several of its requests can be rejected at once, but the session is wiped only once. */
+    private class Operation {
+        private val wiped = AtomicBoolean(false)
+        fun claimWipe(): Boolean = wiped.compareAndSet(false, true)
+    }
+
+    private suspend fun <T> guarded(op: Operation, call: suspend () -> ApiResult<T>): ApiResult<T> {
         val result = call()
-        if (result is ApiResult.Failure && result.error is ApiError.Unauthorized && tokenWasPresent()) wipeSession()
+        val rejected = result is ApiResult.Failure && result.error is ApiError.Unauthorized
+        if (rejected && tokenWasPresent() && op.claimWipe()) wipeSession()
         return result
     }
 
