@@ -14,4 +14,5 @@ dependencies {
     implementation(project(":core:auth"))
     implementation(project(":core:wearsync"))
     implementation(project(":feature:buildsdata"))
+    testImplementation(testFixtures(project(":core:network")))
 }
