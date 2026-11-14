@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
+    api(project(":feature:buildsdata"))
     implementation(project(":core:common"))
     implementation(project(":core:network"))
     implementation(project(":core:auth"))

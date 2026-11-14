@@ -15,6 +15,8 @@ import com.tomasps.virga.feature.kv.kvKoinModule
 import com.tomasps.virga.feature.pages.pagesKoinModule
 import com.tomasps.virga.feature.r2.r2KoinModule
 import com.tomasps.virga.feature.workers.workersKoinModule
+import com.tomasps.virga.wearsync.HandoffPublisher
+import com.tomasps.virga.wearsync.startWearSync
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,5 +50,8 @@ class VirgaApplication : Application() {
         // graph (the HTTP client, the Keystore-backed vault) happens off the main thread, so the first frames are not
         // held up by it.
         startupScope.launch { koin.get<SessionRepository>().restore() }
+        // Separate from restore(), so a wear-sync failure can never block the session (and the splash). The publisher
+        // reads the state flow, so it sees the settled session whenever restore() finishes.
+        startupScope.launch { startWearSync(startupScope, koin.get<HandoffPublisher>()) }
     }
 }

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="builds_title">Builds</string>
+    <string name="builds_empty">No builds</string>
+    <string name="builds_loading">Loading</string>
+    <string name="refresh">Retry</string>
+
+    <string name="status_running">Running</string>
+    <string name="status_passed">Passed</string>
+    <string name="status_failed">Failed</string>
+    <string name="status_canceled">Canceled</string>
+    <string name="status_unknown">Unknown</string>
+
+    <string name="error_offline">Offline</string>
+    <string name="error_token_rejected">Token rejected</string>
+    <string name="error_rate_limited">Rate limited</string>
+    <string name="error_something_wrong">Something went wrong</string>
+    <string name="status_with_age">%1$s · %2$s</string>
+
+    <string name="connect_not_connected">Open Virga on your phone to connect</string>
+    <string name="connect_stale">Reconnect from phone</string>
+    <string name="action_disconnect">Disconnect</string>
+    <string name="confirm_disconnect_title">Disconnect this watch?</string>
+
+    <string name="action_cancel">Cancel build</string>
+    <string name="action_retry">Retry build</string>
+    <string name="confirm_cancel_title">Cancel this build?</string>
+    <string name="confirm_retry_title">Start a new build?</string>
+    <string name="confirm_yes">Confirm</string>
+    <string name="confirm_back">Back</string>
+    <string name="action_running">Working</string>
+    <string name="action_done">Done</string>
+    <string name="action_ok">OK</string>
+
+    <string name="tile_label">Latest build</string>
+    <string name="complication_label">Latest build</string>
+
+    <string name="summary_tile_label">Worker 24h</string>
+    <string name="summary_title">Last 24h</string>
+    <string name="summary_requests">Worker requests</string>
+    <string name="summary_errors">Worker errors</string>
+    <string name="summary_open_phone">Open phone app</string>
+    <string name="summary_reconnect">Reconnect from phone</string>
+    <string name="summary_no_access">Token lacks analytics access</string>
+    <string name="summary_no_data">No data</string>
+
+    <string name="action_watch">Watch this build</string>
+    <string name="action_stop_watching">Stop watching</string>
+    <string name="watch_alerts_off">Alerts are off</string>
+
+    <string name="alert_channel_name">Build alerts</string>
+    <string name="alert_watching_channel_name">Watching builds</string>
+    <string name="alert_watching_one">Watching a build</string>
+    <string name="alert_watching_many">Watching %1$d builds</string>
+    <string name="alert_finished">Finished</string>
+    <string name="alert_lost">Lost track of the build</string>
+    <string name="alert_expired">Stopped watching</string>
+</resources>

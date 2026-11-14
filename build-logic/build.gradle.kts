@@ -29,6 +29,10 @@ gradlePlugin {
             id = "virga.android.application"
             implementationClass = "com.tomasps.virga.buildlogic.VirgaAndroidApplicationPlugin"
         }
+        register("virgaAndroidWear") {
+            id = "virga.android.wear"
+            implementationClass = "com.tomasps.virga.buildlogic.VirgaAndroidWearPlugin"
+        }
         register("virgaAndroidLibrary") {
             id = "virga.android.library"
             implementationClass = "com.tomasps.virga.buildlogic.VirgaAndroidLibraryPlugin"

@@ -6,7 +6,7 @@ Virga is an unofficial native Android client for Cloudflare. This file is the co
 
 - Native Android, published on the Play Store for other people.
 - First version covers Workers (with Workers Builds), Pages, DNS and zones, R2, D1, KV: everything the public API allows, read and write, plus analytics.
-- No server. The credential never leaves the phone; the phone talks to `api.cloudflare.com` directly.
+- No server. The credential is stored encrypted on the phone and sent only to `api.cloudflare.com` for API calls; only while a paired watch advertises the Virga watch app's capability, it is also written to the Wear Data Layer (an item Google Play services stores on the phone and on the watch), and the watch stores it encrypted with its own Keystore key. The phone talks to `api.cloudflare.com` directly.
 - "Watch build" exists for a build that is already running. It pins that build to an Android Live Update.
 - Name: Virga. Logo: mark A, three slanted streaks of uneven length fading at the bottom. Animated splash: the streaks draw downward one after another, then the wordmark appears.
 - Bottom tabs: Home, Compute, Domains, Storage, Account.
@@ -35,7 +35,9 @@ Virga is an unofficial native Android client for Cloudflare. This file is the co
 ## Modules
 
 ```
-:app                    MainActivity, splash, nav host, bottom bar, Koin start, demo wiring
+:app                    MainActivity, splash, nav host, bottom bar, Koin start, demo wiring, `wearsync` package (phone-side credential publisher)
+:wear                   Wear OS app (minSdk 33): session, builds list/detail, tiles, complication, watch alerts, demo
+:core:wearsync          Data Layer handoff contract shared by phone and watch: HandoffPayload, HandoffCodec, HandoffPaths, StalenessPolicy. No Android APIs in its code
 :core:common            Result/error types, dispatchers, formatters (bytes, counts, durations, relative time)
 :core:network           CloudflareApi (REST envelope), GraphQL client, pagination, rate limiting, demo engine
 :core:auth              credential vault, session, account list and selection
@@ -45,7 +47,8 @@ Virga is an unofficial native Android client for Cloudflare. This file is the co
 :feature:account        sign-in, token guidance, account switcher, settings, about
 :feature:home           account home: search, analytics tiles, building now, shortcuts
 :feature:workers        Worker list and detail (overview, metrics, deployments, logs, domains, settings)
-:feature:builds         Workers Builds list/detail/logs/trigger/cancel + watch service + Live Update
+:feature:buildsdata     Workers Builds api (repository, DTOs, triggers), demo routes and watch engine (registry, policy, store). No UI, no Android service
+:feature:builds         Workers Builds list/detail/logs/trigger/cancel screens + watch service + Live Update. Depends on :feature:buildsdata
 :feature:pages          Pages projects, deployments, domains, settings
 :feature:domains        zones, zone overview and analytics, DNS records, DNS settings, zone toggles
 :feature:r2             buckets, objects, bucket settings, metrics
@@ -53,7 +56,16 @@ Virga is an unofficial native Android client for Cloudflare. This file is the co
 :feature:kv             namespaces, keys, values, bulk operations, metrics
 ```
 
-Feature modules depend only on `core:*`, never on each other. Cross-feature links (for example a Worker's R2 binding opening that bucket) go through route keys declared in `core:navigation`.
+Feature modules depend only on `core:*`, never on each other, with one exception: `:feature:builds` may depend on `:feature:buildsdata`, a data-only module with no UI. Cross-feature links (for example a Worker's R2 binding opening that bucket) go through route keys declared in `core:navigation`.
+
+### Wear OS modules and dependency rules
+
+- `:wear` is an application module built by the `virga.android.wear` convention plugin (`build-logic`). It applies the phone application convention with the same application id and namespace (the Data Layer only delivers the phone app's items to a watch app with the same id) and a minSdk of 33 (Wear OS 4).
+- `:wear` may depend on `:core:common`, `:core:network`, `:core:auth`, `:core:wearsync` and `:feature:buildsdata`. It must not depend on `:core:ui`, `:feature:home`, `:feature:builds` or any other feature, because those carry the phone UI. Where it needs a phone query (the 24h summary), it duplicates the small query instead.
+- `:feature:buildsdata` holds what both the phone and the watch need from Workers Builds. It was extracted from `:feature:builds`, which now depends on it. It has no Compose UI and no Android service.
+- `:core:wearsync` is the only code both `:app` and `:wear` share for the handoff. Its code uses no Android APIs.
+- The phone side of the handoff lives in the `wearsync` package of `:app` (publisher, heartbeat and clear-retry workers, Play Services transport). Features do not know about it.
+- Handoff: the watch app advertises the Wear capability `virga_watch_app` (`WatchCapability.NAME` in `:core:wearsync`, kept through resource shrinking by `res/raw/keep.xml`). The phone publishes the credential and accounts as a Data Layer item at `/virga/credential` only while signed in and while `CapabilityClient` (FILTER_ALL, so a watch that is merely out of range still counts) finds a node with that capability; otherwise it deletes any item it wrote and cancels the heartbeat. A transient lookup failure neither publishes nor deletes. A manifest `WearableListenerService` with a `CAPABILITY_CHANGED` filter on `/virga_watch_app` re-evaluates when the app is installed or removed, including while the phone process is not running. Sign-out always deletes the item. The watch encrypts the token with its own Keystore key and treats a check-in older than 24 hours as stale (`StalenessPolicy`).
 
 ## Contracts the core modules must provide
 
