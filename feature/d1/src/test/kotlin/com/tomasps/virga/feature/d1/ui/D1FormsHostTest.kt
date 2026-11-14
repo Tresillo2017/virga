@@ -99,7 +99,7 @@ class D1FormsHostTest {
         flow.clickText("EU")
         flow.clickText("Submit")
 
-        compose.waitUntil(WAIT_MS) { list.state.value.create == null }
+        flow.waitUntil(WAIT_MS) { list.state.value.create == null }
         val created = listedDatabases(flow.get()).single { it.name == "fresh-db" }
         assertEquals("eu", created.jurisdiction)
     }

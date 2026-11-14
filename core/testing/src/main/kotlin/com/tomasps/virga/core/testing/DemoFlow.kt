@@ -132,6 +132,20 @@ class DemoFlow(
         compose.waitUntilAtLeastOneExists(hasTestTag(tag), timeoutMs)
     }
 
+    /**
+     * Waits until [condition] holds, for state that is not on screen (a saved preference, a recorded call).
+     *
+     * Each poll first runs what is queued on the main looper. Work that hops from a background thread back to the main
+     * thread (a DataStore edit started from a ViewModel does) only runs when the looper is idled, and Compose's own
+     * `waitUntil` does not idle it, so without this the wait passes or times out depending on thread timing.
+     */
+    fun waitUntil(timeoutMs: Long = FLOW_WAIT_TIMEOUT_MS, condition: () -> Boolean) {
+        compose.waitUntil(timeoutMs) {
+            ShadowLooper.idleMainLooper()
+            condition()
+        }
+    }
+
     /** Waits for the node with exactly [text] and returns its bounds in the window, in pixels. */
     fun boundsOf(text: String): Rect {
         waitForText(text)
@@ -161,8 +175,7 @@ class DemoFlow(
         waitForText(text)
         val target = compose.onNode(hasText(text) and hasClickAction())
         if (isInsideScrollable(target.fetchSemanticsNode())) target.performScrollTo()
-        // The click goes through the node's click action, not injected touch events. Two injected taps in quick
-        // succession were sometimes dropped on slower machines, which made flows fail for timing reasons only.
+        // The click goes through the node's click action, not injected touch events, so it does not depend on touch timing.
         target.performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
     }

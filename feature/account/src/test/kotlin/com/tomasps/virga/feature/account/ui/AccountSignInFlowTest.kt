@@ -13,7 +13,6 @@ import com.tomasps.virga.core.common.result.ApiError
 import com.tomasps.virga.core.common.result.ApiResult
 import com.tomasps.virga.core.navigation.SignIn
 import com.tomasps.virga.core.testing.DemoFlow
-import com.tomasps.virga.core.testing.FLOW_WAIT_TIMEOUT_MS
 import com.tomasps.virga.feature.account.testing.FakeSessionRepository
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.After
@@ -87,7 +86,7 @@ class AccountSignInFlowTest {
 
         flow.clickText(VERIFY)
 
-        compose.waitUntil(FLOW_WAIT_TIMEOUT_MS) { session.signInTokens.isNotEmpty() }
+        flow.waitUntil { session.signInTokens.isNotEmpty() }
         assertEquals(listOf("cfut_example_token"), session.signInTokens)
         flow.clickText(VERIFY)
         flow.assertTextShown(EMPTY_TITLE)
@@ -153,7 +152,7 @@ class AccountSignInFlowTest {
 
         flow.clickText("Explore the demo")
 
-        compose.waitUntil(FLOW_WAIT_TIMEOUT_MS) { session.demoEntries == 1 }
+        flow.waitUntil { session.demoEntries == 1 }
         assertEquals(1, session.demoEntries)
         assertTrue(session.signInTokens.isEmpty())
     }

@@ -152,7 +152,7 @@ class AccountDemoFlowTest {
         flow.clickText("Light")
 
         val themes = flow.get<ThemeRepository>()
-        compose.waitUntil(THEME_SAVE_TIMEOUT_MS) { runBlocking { themes.mode.first() == ThemeMode.Light } }
+        flow.waitUntil(THEME_SAVE_TIMEOUT_MS) { runBlocking { themes.mode.first() == ThemeMode.Light } }
         assertEquals(ThemeMode.Light, runBlocking { themes.mode.first() })
     }
 
@@ -163,8 +163,6 @@ class AccountDemoFlowTest {
 
         flow.clickText("Dark")
         awaitSavedTheme(themes, ThemeMode.Dark)
-        // The saved value comes back to the screen through the ViewModel; let that settle before the next tap.
-        compose.waitForIdle()
 
         flow.clickText("Follow system")
         awaitSavedTheme(themes, ThemeMode.System)
@@ -173,7 +171,7 @@ class AccountDemoFlowTest {
     /** Waits for [expected] to be stored, and on timeout says what was stored and what the screen showed. */
     private fun awaitSavedTheme(themes: ThemeRepository, expected: ThemeMode) {
         try {
-            compose.waitUntil(THEME_SAVE_TIMEOUT_MS) { runBlocking { themes.mode.first() == expected } }
+            flow.waitUntil(THEME_SAVE_TIMEOUT_MS) { runBlocking { themes.mode.first() == expected } }
         } catch (timeout: ComposeTimeoutException) {
             val stored = runBlocking { themes.mode.first() }
             val screen = compose.onRoot().printToString(maxDepth = Int.MAX_VALUE)
