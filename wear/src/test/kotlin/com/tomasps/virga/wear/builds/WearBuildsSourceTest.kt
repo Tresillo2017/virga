@@ -11,6 +11,9 @@ import com.tomasps.virga.core.network.testing.mockCloudflareApi
 import com.tomasps.virga.feature.builds.api.BuildsRepository
 import io.ktor.http.HttpStatusCode
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -42,15 +45,20 @@ private fun source(
     api: CloudflareApi,
     calls: Calls = Calls(),
     hasToken: Boolean = true,
-    onUnauthorizedThrows: Boolean = false,
+    onUnauthorizedFailure: Throwable? = null,
+    hasTokenFailure: Throwable? = null,
+    warnings: MutableList<String> = mutableListOf(),
 ) = WearBuildsSource(
     repository = BuildsRepository(api),
     onUnauthorized = {
         calls.unauthorized++
-        if (onUnauthorizedThrows) error("storage down")
+        onUnauthorizedFailure?.let { throw it }
     },
-    hasToken = { hasToken },
-    warn = {},
+    hasToken = {
+        hasTokenFailure?.let { throw it }
+        hasToken
+    },
+    warn = { warnings += it },
 )
 
 private fun summary(branch: String? = "main", commit: String? = "abc", tag: String? = "tag-api") = BuildSummary(
@@ -66,14 +74,14 @@ private fun summary(branch: String? = "main", commit: String? = "abc", tag: Stri
 class WearBuildsSourceTest {
 
     @Test
-    fun `recent merges workers newest first and caps at ten`() = runBlocking {
+    fun `recent keeps only the newest ten of fifteen`() = runBlocking {
         val api = mockCloudflareApi {
-            get(SCRIPTS) { DemoReply.ok(scripts("a", "b")) }
+            get(SCRIPTS) { DemoReply.ok(scripts("a", "b", "c")) }
             get(BUILDS) { request ->
                 val worker = request.pathParams["workerTag"]
-                val base = if (worker == "tag-a") 0 else 1
+                val base = listOf("tag-a", "tag-b", "tag-c").indexOf(worker)
                 val items = (0 until 5).joinToString(prefix = "[", postfix = "]") { i ->
-                    buildJson("$worker-$i", "2026-11-11T10:%02d:00Z".format(i * 2 + base))
+                    buildJson("$worker-$i", "2026-11-11T10:%02d:00Z".format(i * 3 + base))
                 }
                 DemoReply.ok(json(items))
             }
@@ -81,10 +89,56 @@ class WearBuildsSourceTest {
 
         val list = (source(api).recent(ACCOUNT) as ApiResult.Success).value
 
+        // Minutes 0..14 across workers; the newest ten are minutes 14 down to 5.
         assertEquals(10, list.size)
-        assertEquals(list.sortedByDescending { it.createdOn }, list)
-        assertEquals("tag-b-4", list.first().buildUuid)
-        assertEquals("tag-b", list.first().workerTag)
+        assertEquals(
+            listOf("tag-c-4", "tag-b-4", "tag-a-4", "tag-c-3", "tag-b-3", "tag-a-3", "tag-c-2", "tag-b-2", "tag-a-2", "tag-c-1"),
+            list.map { it.buildUuid },
+        )
+        assertEquals("tag-c", list.first().workerTag)
+    }
+
+    @Test
+    fun `recent scans only the first twenty workers`() = runBlocking {
+        val queried = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+        val names = (1..21).map { "w%02d".format(it) }
+        val api = mockCloudflareApi {
+            get(SCRIPTS) { DemoReply.ok(scripts(*names.toTypedArray())) }
+            get(BUILDS) { request ->
+                queried += request.pathParams["workerTag"].orEmpty()
+                DemoReply.ok(json("[]"))
+            }
+        }
+
+        source(api).recent(ACCOUNT)
+
+        assertEquals(20, queried.size)
+        assertTrue("tag-w21" !in queried)
+    }
+
+    @Test
+    fun `recent fetches workers in parallel but never more than four at once`() = runBlocking(Dispatchers.Default) {
+        val inFlight = AtomicInteger()
+        val peak = AtomicInteger()
+        val names = (1..12).map { "w%02d".format(it) }
+        val api = mockCloudflareApi {
+            get(SCRIPTS) { DemoReply.ok(scripts(*names.toTypedArray())) }
+            get(BUILDS) { request ->
+                val now = inFlight.incrementAndGet()
+                peak.accumulateAndGet(now, ::maxOf)
+                Thread.sleep(40)
+                inFlight.decrementAndGet()
+                val worker = request.pathParams["workerTag"].orEmpty()
+                val minute = names.indexOf(worker.removePrefix("tag-"))
+                DemoReply.ok(json("[${buildJson(worker, "2026-11-11T10:%02d:00Z".format(minute))}]"))
+            }
+        }
+
+        val list = (source(api).recent(ACCOUNT) as ApiResult.Success).value
+
+        assertTrue("peak ${peak.get()}", peak.get() in 2..4)
+        // Order is by creation time, not by which fetch finished first.
+        assertEquals((11 downTo 2).map { "tag-w%02d".format(it + 1) }, list.map { it.buildUuid })
     }
 
     @Test
@@ -197,8 +251,13 @@ class WearBuildsSourceTest {
     @Test
     fun `retry without a plan fails locally and never starts a build`() = runBlocking {
         var started = false
-        val api = retryApi { reg ->
-            reg.post(START) {
+        var triggersRead = false
+        val api = mockCloudflareApi {
+            get(TRIGGERS) {
+                triggersRead = true
+                DemoReply.ok(json("[]"))
+            }
+            post(START) {
                 started = true
                 DemoReply.ok(json("""{"build_uuid":"b-9"}"""))
             }
@@ -208,6 +267,7 @@ class WearBuildsSourceTest {
 
         assertTrue((result as ApiResult.Failure).error is ApiError.Local)
         assertTrue(!started)
+        assertTrue(!triggersRead)
     }
 
     @Test
@@ -240,10 +300,83 @@ class WearBuildsSourceTest {
     }
 
     @Test
-    fun `a failing onUnauthorized is swallowed`() = runBlocking {
-        val result = source(unauthorizedApi(), hasToken = true, onUnauthorizedThrows = true).recent(ACCOUNT)
+    fun `a failing onUnauthorized is swallowed and logs the class name but not the message`() = runBlocking {
+        val warnings = mutableListOf<String>()
+
+        val result = source(
+            unauthorizedApi(),
+            onUnauthorizedFailure = IllegalStateException("storage down"),
+            warnings = warnings,
+        ).recent(ACCOUNT)
 
         assertTrue((result as ApiResult.Failure).error is ApiError.Unauthorized)
+        assertEquals(1, warnings.size)
+        assertTrue(warnings.single().contains("IllegalStateException"))
+        assertTrue(!warnings.single().contains("storage down"))
+    }
+
+    @Test
+    fun `a cancellation from onUnauthorized propagates`() {
+        var thrown: Throwable? = null
+        try {
+            runBlocking {
+                source(unauthorizedApi(), onUnauthorizedFailure = CancellationException("stop")).recent(ACCOUNT)
+            }
+        } catch (e: CancellationException) {
+            thrown = e
+        }
+
+        assertTrue(thrown is CancellationException)
+    }
+
+    @Test
+    fun `a throwing hasToken counts as no token and does not wipe`() = runBlocking {
+        val calls = Calls()
+
+        val result = source(unauthorizedApi(), calls, hasTokenFailure = IllegalStateException("keystore")).recent(ACCOUNT)
+
+        assertTrue((result as ApiResult.Failure).error is ApiError.Unauthorized)
+        assertEquals(0, calls.unauthorized)
+    }
+
+    @Test
+    fun `a cancellation from hasToken propagates`() {
+        var thrown: Throwable? = null
+        try {
+            runBlocking {
+                source(unauthorizedApi(), hasTokenFailure = CancellationException("stop")).recent(ACCOUNT)
+            }
+        } catch (e: CancellationException) {
+            thrown = e
+        }
+
+        assertTrue(thrown is CancellationException)
+    }
+
+    @Test
+    fun `a rejected token on cancel wipes the session`() = runBlocking {
+        val calls = Calls()
+        val api = mockCloudflareApi {
+            put(CANCEL) { DemoReply.failure(HttpStatusCode.Unauthorized, 10000, "bad token") }
+        }
+
+        val result = source(api, calls).cancel(ACCOUNT, "b-1")
+
+        assertTrue((result as ApiResult.Failure).error is ApiError.Unauthorized)
+        assertEquals(1, calls.unauthorized)
+    }
+
+    @Test
+    fun `a rejected token on retry wipes the session`() = runBlocking {
+        val calls = Calls()
+        val api = mockCloudflareApi {
+            get(TRIGGERS) { DemoReply.failure(HttpStatusCode.Unauthorized, 10000, "bad token") }
+        }
+
+        val result = source(api, calls).retry(ACCOUNT, summary())
+
+        assertTrue((result as ApiResult.Failure).error is ApiError.Unauthorized)
+        assertEquals(1, calls.unauthorized)
     }
 
     private fun unauthorizedApi() = mockCloudflareApi {

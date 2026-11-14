@@ -20,10 +20,14 @@ object RetryPlanner {
         return RetryPlan(trigger.triggerUuid, target)
     }
 
-    private fun targetOf(build: BuildSummary): BuildTarget? = when {
-        !build.commitHash.isNullOrBlank() -> BuildTarget.Commit(build.commitHash!!)
-        !build.branch.isNullOrBlank() -> BuildTarget.Branch(build.branch!!)
-        else -> null
+    internal fun targetOf(build: BuildSummary): BuildTarget? {
+        val commit = build.commitHash
+        val branch = build.branch
+        return when {
+            !commit.isNullOrBlank() -> BuildTarget.Commit(commit)
+            !branch.isNullOrBlank() -> BuildTarget.Branch(branch)
+            else -> null
+        }
     }
 
     private fun triggerFor(branch: String?, triggers: List<TriggerRef>): TriggerRef? {
