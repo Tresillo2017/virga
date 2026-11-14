@@ -40,6 +40,10 @@ class WatchSessionRepository(
     private var issued: IssuedCredential? = null
     private var lastGeneration = 0L
 
+    /** Bumped by every apply and wipe; see [applyStoredItem]. */
+    @Volatile
+    private var changes = 0L
+
     fun isCheckInStale(): Boolean = StalenessPolicy.isStale(checkInMillis, clock())
 
     /** The credential requests may use right now, or null. Staleness is the provider's check, not this one's. */
@@ -63,18 +67,21 @@ class WatchSessionRepository(
      * The in-memory session keeps serving the previous credential until the new one is committed, so requests that
      * overlap a slow write neither stall on the lock nor fail locally.
      */
-    suspend fun apply(payload: HandoffPayload) = lock.withLock {
+    suspend fun apply(payload: HandoffPayload) = lock.withLock { applyLocked(payload) }
+
+    private suspend fun applyLocked(payload: HandoffPayload) {
+        changes++
         val credential = credentialOf(payload)
         if (credential == null) {
             wipe()
-            return@withLock
+            return
         }
         try {
             prefs.clearCheckIn()
             check(vault.write(credential)) { "vault write failed" }
             val accountIds = payload.accounts.map { it.id }.toSet()
             val checkIn = clock()
-            prefs.write(checkIn, payload.selectedAccountId, accountIds)
+            prefs.write(checkIn, payload.selectedAccountId, accountIds, itemStamp = payload.sentAtMillis)
             checkInMillis = checkIn
             activate(credential, payload.selectedAccountId, accountIds)
         } catch (error: CancellationException) {
@@ -87,6 +94,25 @@ class WatchSessionRepository(
     }
 
     suspend fun clear() = lock.withLock { wipe() }
+
+    /** Counts applies and wipes, so a caller that read an item outside the lock can tell whether it is outdated. */
+    fun changeCount(): Long = changes
+
+    /**
+     * Applies an item read from the Data Layer outside the listener (startup, app open). Only while NotConnected or
+     * Stale, only if no apply or wipe happened since [since] (so a live event that landed meanwhile wins), and only if
+     * it is not the item last applied, so the same old item cannot lift the Stale lock or undo a Disconnect or a 401
+     * wipe. Returns whether it applied. An undecodable item changes nothing.
+     */
+    suspend fun applyStoredItem(bytes: ByteArray, since: Long): Boolean = lock.withLock {
+        val current = mutableState.value
+        val isIdle = current == WatchSessionState.NotConnected || current == WatchSessionState.Stale
+        if (changes != since || !isIdle) return@withLock false
+        val payload = (HandoffCodec.decode(bytes) as? HandoffDecode.Ok)?.payload ?: return@withLock false
+        if (payload.sentAtMillis == prefs.lastAppliedItemStamp()) return@withLock false
+        applyLocked(payload)
+        true
+    }
 
     /**
      * The API rejected the credential of [sentGeneration]: it is revoked or expired, so keep nothing. A rejection of a
@@ -151,6 +177,7 @@ class WatchSessionRepository(
      * Connected). Both steps are always attempted and the session is always disconnected; the first failure is rethrown.
      */
     private suspend fun wipe() {
+        changes++
         checkInMillis = null
         deactivate(WatchSessionState.NotConnected)
         val prefsFailure = attempt { prefs.clear() }

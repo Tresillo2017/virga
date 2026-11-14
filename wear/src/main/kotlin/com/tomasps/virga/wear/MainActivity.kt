@@ -14,4 +14,9 @@ class MainActivity : ComponentActivity() {
         val startRoute = if (savedInstanceState == null) startRouteFrom(intent.getStringExtra(EXTRA_START_ROUTE)) else null
         setContent { WearApp(startRoute = startRoute) }
     }
+
+    override fun onStart() {
+        super.onStart()
+        (application as? VirgaWearApp)?.onAppOpened()
+    }
 }

@@ -41,6 +41,9 @@ import com.tomasps.virga.wear.summary.SummaryRefresher
 import com.tomasps.virga.wear.summary.SummarySource
 import com.tomasps.virga.wear.ui.BuildDetailViewModel
 import com.tomasps.virga.wear.ui.BuildListViewModel
+import com.tomasps.virga.wear.session.CredentialItemSource
+import com.tomasps.virga.wear.session.DataLayerCredentialItemSource
+import com.tomasps.virga.wear.session.PhoneItemBootstrap
 import com.tomasps.virga.wear.session.SentCredentialGuard
 import com.tomasps.virga.wear.session.SessionSentCredentialGuard
 import com.tomasps.virga.wear.session.StalenessGuardedCredentialProvider
@@ -107,6 +110,8 @@ val wearKoinModule = module {
     single { BuildsDemoRoutes() } bind DemoRouteContributor::class
     single { WearDemoRoutes() } bind DemoRouteContributor::class
     single { WatchSessionRepository(get(), get(), get(), get(), System::currentTimeMillis) }
+    single<CredentialItemSource> { DataLayerCredentialItemSource(get()) }
+    single { PhoneItemBootstrap(get(), get()) }
     // Enforces the 24-hour rule per request, not only when something remembers to call refreshStaleness().
     single<CredentialProvider> { StalenessGuardedCredentialProvider(get()) }
     // Ties each 401 to the credential that request actually sent, so only a rejection of the token in use wipes.
