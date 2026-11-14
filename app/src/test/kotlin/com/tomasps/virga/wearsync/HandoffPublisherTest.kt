@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -43,7 +44,9 @@ class HandoffPublisherTest {
         var clears = 0
         var failClear = false
         var failPublish = false
+        var hangPublish = false
         override suspend fun publish(payload: HandoffPayload) {
+            if (hangPublish) awaitCancellation()
             if (failPublish) error("data layer down")
             published += payload
         }
@@ -311,7 +314,7 @@ class HandoffPublisherTest {
     }
 
     @Test
-    fun permanentUnavailabilityClearsFlagAndStopsRetrying() = runTest {
+    fun unavailableApiAfterAPublishKeepsFlagButStopsRetrying() = runTest {
         val h = harness()
         val transport = FakeTransport().apply { failClear = true }
         val pending = FakePendingClear().apply { everPublished = true }
@@ -321,9 +324,50 @@ class HandoffPublisherTest {
         )
         publisher.start(h.scope)
 
-        assertEquals(false, pending.flag)
+        assertTrue(pending.flag)
         assertEquals(0, scheduled)
         assertTrue(publisher.retryPendingClear(attempt = 0))
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun unavailableApiWithNothingEverPublishedDropsAStalePendingFlag() = runTest {
+        val h = harness()
+        val transport = FakeTransport().apply { failClear = true }
+        val pending = FakePendingClear().apply { flag = true }
+        var scheduled = 0
+        h.publisher(
+            FakeSession(SessionState.SignedOut), h.vault(), transport, pending, { scheduled++ }, { true },
+        ).start(h.scope)
+
+        assertEquals(false, pending.flag)
+        assertEquals(0, scheduled)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun pendingFlagForcesAClearEvenWithoutAPublishRecord() = runTest {
+        val h = harness()
+        val transport = FakeTransport()
+        val pending = FakePendingClear().apply { flag = true }
+        h.publisher(FakeSession(SessionState.SignedOut), h.vault(), transport, pending).start(h.scope)
+
+        assertEquals(1, transport.clears)
+        assertEquals(false, pending.flag)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun signOutDuringTheFirstPublishStillClearsTheWatch() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport().apply { hangPublish = true }
+        val session = FakeSession(signedIn())
+        h.publisher(session, vault, transport).start(h.scope)
+
+        session.state.value = SessionState.SignedOut
+
+        assertEquals(1, transport.clears)
         h.scope.coroutineContext[Job]!!.cancel()
     }
 

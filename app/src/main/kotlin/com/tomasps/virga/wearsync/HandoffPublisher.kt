@@ -92,8 +92,9 @@ class HandoffPublisher(
 
     private suspend fun clearWatch(force: Boolean): Boolean {
         if (force && !pendingClear.isSet()) return true
-        // Nothing was ever sent to a watch, so there is nothing to clear (and no watch to keep failing against).
-        if (!pendingClear.hasEverPublished()) return true
+        val everPublished = pendingClear.hasEverPublished()
+        // Nothing was ever sent to a watch and no clear is owed, so there is nothing to clear.
+        if (!everPublished && !pendingClear.isSet()) return true
         pendingClear.set(true)
         return try {
             transport.clear()
@@ -103,8 +104,9 @@ class HandoffPublisher(
             throw error
         } catch (error: Exception) {
             if (isUnavailable(error)) {
-                // No Wearable API on this phone, so no watch can hold a credential: terminal.
-                pendingClear.set(false)
+                // No Wearable API right now: stop retrying in the background. If something was ever published the
+                // flag stays set so a later cold start still sends the delete; otherwise there is nothing to owe.
+                if (!everPublished) pendingClear.set(false)
                 return true
             }
             log("Wear clear failed: ${describe(error)}")
@@ -132,9 +134,11 @@ class HandoffPublisher(
             selectedAccountId = state.selectedAccountId,
             sentAtMillis = clock(),
         )
+        // Recorded before the put: once the request is handed to the Data Layer it may land even if this sync is
+        // cancelled or the process dies, and a later sign-out must still know to clear.
+        pendingClear.markPublished()
         return try {
             transport.publish(payload)
-            pendingClear.markPublished()
             // A newer credential now sits on the watch, so an older pending clear must not wipe it.
             pendingClear.set(false)
             true

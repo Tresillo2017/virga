@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
 
 private const val CLEAR_RETRY_BACKOFF_SECONDS = 30L
 
-/** Retries a failed sign-out clear of the watch's credential, with backoff, until it succeeds. */
+/** Retries a failed sign-out clear of the watch's credential, with backoff, up to [MAX_CLEAR_ATTEMPTS] attempts. */
 class HandoffClearRetryWorker(
     context: Context,
     params: WorkerParameters,
