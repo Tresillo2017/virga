@@ -5,10 +5,12 @@ import com.tomasps.virga.core.common.builds.BuildStatus
 import com.tomasps.virga.core.common.builds.BuildSummary
 import com.tomasps.virga.core.common.result.ApiError
 import com.tomasps.virga.core.common.result.ApiResult
+import com.tomasps.virga.feature.builds.api.BuildRecord
 import com.tomasps.virga.feature.builds.api.BuildTarget
 import com.tomasps.virga.wear.builds.RetryPlan
 import com.tomasps.virga.wear.builds.WearBuilds
 import java.time.Instant
+import kotlinx.coroutines.flow.MutableStateFlow
 
 internal const val ACCOUNT = "acc-1"
 
@@ -41,6 +43,7 @@ internal class FakeWearBuilds(
     var retry: ApiResult<String> = ApiResult.Success("b-2"),
     /** When null, [latest] is derived from [recent]. */
     var latest: ApiResult<BuildSummary?>? = null,
+    var record: ApiResult<BuildRecord> = ApiResult.Failure(ApiError.Local("no record scripted")),
 ) : WearBuilds {
     val calls = mutableListOf<String>()
 
@@ -63,6 +66,11 @@ internal class FakeWearBuilds(
         return detail ?: ApiResult.Success(build)
     }
 
+    override suspend fun record(accountId: String, scriptName: String, buildUuid: String): ApiResult<BuildRecord> {
+        calls += "record:$accountId:$scriptName/$buildUuid"
+        return record
+    }
+
     override suspend fun cancel(accountId: String, buildUuid: String): ApiResult<Unit> {
         calls += "cancel:$buildUuid"
         return cancel
@@ -80,3 +88,20 @@ internal class FakeWearBuilds(
 }
 
 internal fun failure(error: ApiError) = ApiResult.Failure(error)
+
+/** Records what the detail screen asks of the watcher, and mirrors the watched set the way the registry does. */
+internal class FakeWatchStarter : com.tomasps.virga.wear.alerts.WatchStarter {
+    val keys = MutableStateFlow<Set<String>>(emptySet())
+    val calls = mutableListOf<String>()
+    override val watchedKeys: kotlinx.coroutines.flow.Flow<Set<String>> get() = keys
+
+    override fun start(accountId: String, scriptName: String, buildUuid: String) {
+        calls += "start:$accountId:$scriptName/$buildUuid"
+        keys.value += "$scriptName/$buildUuid"
+    }
+
+    override fun stop(scriptName: String, buildUuid: String) {
+        calls += "stop:$scriptName/$buildUuid"
+        keys.value -= "$scriptName/$buildUuid"
+    }
+}

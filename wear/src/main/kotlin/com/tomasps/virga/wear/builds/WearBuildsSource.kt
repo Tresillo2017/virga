@@ -93,6 +93,9 @@ class WearBuildsSource(
         guarded(Operation()) { repository.build(accountId, build.buildUuid, build.scriptName) }
             .map { record -> record.toSummary().copy(workerTag = build.workerTag) }
 
+    override suspend fun record(accountId: String, scriptName: String, buildUuid: String): ApiResult<BuildRecord> =
+        guarded(Operation()) { repository.build(accountId, buildUuid, scriptName) }
+
     override suspend fun cancel(accountId: String, buildUuid: String): ApiResult<Unit> =
         guarded(Operation()) { repository.cancel(accountId, buildUuid) }.map { }
 

@@ -83,6 +83,7 @@ class WearFlowTest {
                     single { BuildsDemoRoutes() } bind DemoRouteContributor::class
                     single { WearDemoRoutes() } bind DemoRouteContributor::class
                     single { BuildsRepository(get(), get()) }
+                    single<com.tomasps.virga.wear.alerts.WatchStarter> { FakeWatchStarter() }
                     single<WearBuilds> { scripted ?: WearBuildsSource(get(), onUnauthorized = {}, hasToken = { true }) }
                     single<StateFlow<WatchSessionState>>(WATCH_SESSION_STATE) { session }
                 },

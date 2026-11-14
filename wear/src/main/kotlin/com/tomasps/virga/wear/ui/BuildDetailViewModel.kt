@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.tomasps.virga.core.common.builds.BuildStatus
 import com.tomasps.virga.core.common.builds.BuildSummary
 import com.tomasps.virga.core.common.result.ApiResult
+import com.tomasps.virga.wear.alerts.WatchStarter
 import com.tomasps.virga.wear.builds.RetryPlan
+import com.tomasps.virga.wear.builds.routeKey
 import com.tomasps.virga.wear.builds.WearBuilds
 import com.tomasps.virga.wear.session.WatchSessionState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,16 +35,21 @@ data class DetailState(
     val canCancel: Boolean,
     val retryPlan: RetryPlan?,
     val action: ActionState = ActionState.Idle,
+    /** Watch is offered for an active build that is not watched yet. */
+    val canWatch: Boolean = false,
+    val isWatching: Boolean = false,
 )
 
 /**
  * One build with Cancel or Retry. Both go through a confirm step: [cancel] and [retry] only ask, [confirm] makes the
  * call, [dismiss] backs out. Cancel is offered while the build is active; Retry only for a stopped build whose
- * [RetryPlan] exists. A session that is not connected never reaches the API.
+ * [RetryPlan] exists. A session that is not connected never reaches the API. [watch] and [stopWatching] need no
+ * confirm: watching only polls and alerts, it changes nothing in the account.
  */
 class BuildDetailViewModel(
     private val session: StateFlow<WatchSessionState>,
     private val builds: WearBuilds,
+    private val watcher: WatchStarter,
     initial: BuildSummary,
 ) : ViewModel() {
 
@@ -63,6 +70,24 @@ class BuildDetailViewModel(
 
     init {
         viewModelScope.launch { load() }
+        viewModelScope.launch {
+            watcher.watchedKeys.collect { keys ->
+                mutableState.update { it.copy(isWatching = it.build.routeKey() in keys) }
+            }
+        }
+    }
+
+    /** Starts watching this build. Only an active build, under the pinned and still-connected account. */
+    fun watch() {
+        val current = mutableState.value
+        val accountId = activeAccountId() ?: return
+        if (!current.canWatch || current.isWatching) return
+        watcher.start(accountId, current.build.scriptName, current.build.buildUuid)
+    }
+
+    fun stopWatching() {
+        val build = mutableState.value.build
+        watcher.stop(build.scriptName, build.buildUuid)
     }
 
     fun cancel() = ask(ActionKind.Cancel, allowed = mutableState.value.canCancel)
@@ -108,7 +133,7 @@ class BuildDetailViewModel(
         } else {
             null
         }
-        mutableState.update { stateFor(fresh, plan).copy(action = it.action) }
+        mutableState.update { stateFor(fresh, plan).copy(action = it.action, isWatching = it.isWatching) }
     }
 
     /** The pinned account, only while the session is still connected to it. */
@@ -119,5 +144,5 @@ class BuildDetailViewModel(
     private fun setAction(action: ActionState) = mutableState.update { it.copy(action = action) }
 
     private fun stateFor(build: BuildSummary, retryPlan: RetryPlan?) =
-        DetailState(build = build, canCancel = build.status.isActive, retryPlan = retryPlan)
+        DetailState(build = build, canCancel = build.status.isActive, retryPlan = retryPlan, canWatch = build.status.isActive)
 }

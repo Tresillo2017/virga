@@ -28,9 +28,11 @@ private const val ARG_UUID = "buildUuid"
 private const val ROUTE_DETAIL = "build"
 
 /** The detail route for [build], or null when a part is blank: an empty segment would not match any route. */
-internal fun detailRoute(build: BuildSummary): String? {
-    if (build.scriptName.isBlank() || build.buildUuid.isBlank()) return null
-    return "$ROUTE_DETAIL/${Uri.encode(build.scriptName)}/${Uri.encode(build.buildUuid)}"
+internal fun detailRoute(build: BuildSummary): String? = detailRoute(build.scriptName, build.buildUuid)
+
+internal fun detailRoute(scriptName: String, buildUuid: String): String? {
+    if (scriptName.isBlank() || buildUuid.isBlank()) return null
+    return "$ROUTE_DETAIL/${Uri.encode(scriptName)}/${Uri.encode(buildUuid)}"
 }
 
 /** The watch app: the build list, and a detail screen for the build that was tapped. */
@@ -84,6 +86,8 @@ fun WearApp(startRoute: String? = null) {
                         onRetry = detailViewModel::retry,
                         onConfirm = detailViewModel::confirm,
                         onDismiss = detailViewModel::dismiss,
+                        onWatch = detailViewModel::watch,
+                        onStopWatching = detailViewModel::stopWatching,
                     )
                 }
             }

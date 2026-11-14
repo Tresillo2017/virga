@@ -88,4 +88,33 @@ class ManifestClassesTest {
     fun tileFreshnessIsFifteenMinutes() {
         assertEquals(15L * 60 * 1000, com.tomasps.virga.wear.surfaces.TILE_FRESHNESS_MILLIS)
     }
+
+    private fun manifest() = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
+        .newDocumentBuilder().parse(File("src/main/AndroidManifest.xml"))
+
+    private fun declaredPermissions(): Set<String> {
+        val nodes = manifest().getElementsByTagName("uses-permission")
+        return (0 until nodes.length).map { (nodes.item(it) as Element).getAttributeNS(androidNs, "name") }.toSet()
+    }
+
+    @Test
+    fun watchServiceIsAPrivateDataSyncForegroundService() {
+        val name = "com.tomasps.virga.wear.alerts.WearWatchService"
+        val service = service(name)
+
+        assertTrue(android.app.Service::class.java.isAssignableFrom(Class.forName(name)))
+        assertEquals("dataSync", service.getAttributeNS(androidNs, "foregroundServiceType"))
+        assertEquals("false", service.getAttributeNS(androidNs, "exported"))
+    }
+
+    @Test
+    fun alertPermissionsAreDeclared() {
+        val declared = declaredPermissions()
+
+        assertTrue(declared.containsAll(listOf(
+            "android.permission.FOREGROUND_SERVICE",
+            "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+            "android.permission.POST_NOTIFICATIONS",
+        )))
+    }
 }

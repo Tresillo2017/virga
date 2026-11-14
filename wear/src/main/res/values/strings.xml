@@ -32,4 +32,16 @@
 
     <string name="tile_label">Latest build</string>
     <string name="complication_label">Latest build</string>
+
+    <string name="action_watch">Watch this build</string>
+    <string name="action_stop_watching">Stop watching</string>
+    <string name="watch_alerts_off">Alerts are off</string>
+
+    <string name="alert_channel_name">Build alerts</string>
+    <string name="alert_watching_channel_name">Watching builds</string>
+    <string name="alert_watching_one">Watching a build</string>
+    <string name="alert_watching_many">Watching %1$d builds</string>
+    <string name="alert_finished">Finished</string>
+    <string name="alert_lost">Lost track of the build</string>
+    <string name="alert_expired">Stopped watching</string>
 </resources>

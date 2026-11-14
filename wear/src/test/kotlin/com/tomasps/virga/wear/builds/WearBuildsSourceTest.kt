@@ -378,6 +378,25 @@ class WearBuildsSourceTest {
     }
 
     @Test
+    fun `a rejected token on a single build read wipes the session once`() = runBlocking {
+        val calls = Calls()
+
+        val result = source(unauthorizedBuildApi(), calls, hasToken = true).record(ACCOUNT, "api", "b-1")
+
+        assertTrue((result as ApiResult.Failure).error is ApiError.Unauthorized)
+        assertEquals(1, calls.unauthorized)
+    }
+
+    @Test
+    fun `a missing local token on a single build read does not wipe the session`() = runBlocking {
+        val calls = Calls()
+
+        source(unauthorizedBuildApi(), calls, hasToken = false).record(ACCOUNT, "api", "b-1")
+
+        assertEquals(0, calls.unauthorized)
+    }
+
+    @Test
     fun `a missing local token does not wipe the session`() = runBlocking {
         val calls = Calls()
 
@@ -468,6 +487,10 @@ class WearBuildsSourceTest {
 
     private fun unauthorizedApi() = mockCloudflareApi {
         get(SCRIPTS) { DemoReply.failure(HttpStatusCode.Unauthorized, 10000, "bad token") }
+    }
+
+    private fun unauthorizedBuildApi() = mockCloudflareApi {
+        get(BUILD) { DemoReply.failure(HttpStatusCode.Unauthorized, 10000, "bad token") }
     }
 
     private fun retryApi(extra: (DemoRouteRegistry) -> Unit) = mockCloudflareApi {

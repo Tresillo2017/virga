@@ -33,10 +33,13 @@ private data class StoredWatch(
  * Watched build ids in DataStore, so they survive process death. Holds only ids and names, never the token. A
  * corrupt value reads as an empty list: the watch list is a convenience, and losing it must not stop the app.
  */
-class DataStoreWatchStore(private val context: Context) : WatchStore {
+class DataStoreWatchStore(private val dataStore: DataStore<Preferences>) : WatchStore {
+
+    /** The phone's store. The watch passes its own [DataStore] so the two never share a file. */
+    constructor(context: Context) : this(context.watchDataStore)
 
     override suspend fun load(): List<WatchEntry> = try {
-        val raw = context.watchDataStore.data.first()[WATCHED_KEY]
+        val raw = dataStore.data.first()[WATCHED_KEY]
         if (raw == null) {
             emptyList()
         } else {
@@ -52,6 +55,6 @@ class DataStoreWatchStore(private val context: Context) : WatchStore {
             ListSerializer(StoredWatch.serializer()),
             entries.map { StoredWatch(it.accountId, it.scriptName, it.buildUuid, it.startedAtMillis) },
         )
-        context.watchDataStore.edit { it[WATCHED_KEY] = encoded }
+        dataStore.edit { it[WATCHED_KEY] = encoded }
     }
 }

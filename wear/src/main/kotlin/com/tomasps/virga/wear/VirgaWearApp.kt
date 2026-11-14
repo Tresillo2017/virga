@@ -2,11 +2,14 @@ package com.tomasps.virga.wear
 
 import android.app.Application
 import android.util.Log
+import com.tomasps.virga.feature.builds.watch.WatchRegistry
 import com.tomasps.virga.wear.session.WatchSessionRepository
+import com.tomasps.virga.wear.session.WatchSessionState
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -31,6 +34,21 @@ class VirgaWearApp : Application() {
             val session = koin.get<WatchSessionRepository>()
             session.restore()
             session.refreshStaleness()
+        }
+        startupScope.launch { keepOnlyConnectedAccountsWatches(koin.get<WatchRegistry>(), koin.get<kotlinx.coroutines.flow.StateFlow<WatchSessionState>>(WATCH_SESSION_STATE)) }
+    }
+
+    /**
+     * Loads the saved watches (paused, never resumed automatically) and then drops every watch that does not belong
+     * to the connected account, including all of them once the session ends. Restoring is skipped: it settles first.
+     */
+    private suspend fun keepOnlyConnectedAccountsWatches(
+        registry: WatchRegistry,
+        session: kotlinx.coroutines.flow.StateFlow<WatchSessionState>,
+    ) {
+        registry.restore()
+        session.filter { it != WatchSessionState.Restoring }.collect { state ->
+            registry.retainAccount((state as? WatchSessionState.Connected)?.accountId)
         }
     }
 }

@@ -18,7 +18,19 @@ import com.tomasps.virga.core.network.coreNetworkKoinModule
 import com.tomasps.virga.core.network.demo.DemoRouteContributor
 import com.tomasps.virga.feature.builds.demo.BuildsDemoRoutes
 import com.tomasps.virga.feature.builds.api.BuildsRepository
+import com.tomasps.virga.feature.builds.watch.BuildFetcher
+import com.tomasps.virga.feature.builds.watch.DataStoreWatchStore
+import com.tomasps.virga.feature.builds.watch.WatchRegistry
+import com.tomasps.virga.feature.builds.watch.WatchStore
+import com.tomasps.virga.wear.alerts.RegistryWatchStarter
+import com.tomasps.virga.wear.alerts.WatchStarter
+import com.tomasps.virga.wear.alerts.WearBuildFetcher
+import com.tomasps.virga.wear.alerts.WearBuildNotifier
+import com.tomasps.virga.wear.alerts.WearWatchService
 import com.tomasps.virga.wear.builds.WearBuilds
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import com.tomasps.virga.wear.demo.WearDemoRoutes
 import com.tomasps.virga.wear.builds.WearBuildsSource
 import com.tomasps.virga.wear.surfaces.BuildSurfaceRefresher
@@ -50,6 +62,13 @@ private val Context.wearSurfaceDataStore: DataStore<Preferences> by preferencesD
     corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
 )
 
+/** The watch's own list of watched builds, kept apart from the phone's virga_watched_builds. */
+private val Context.wearWatchDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "virga_wear_watches",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
+
+private val WATCH_STORE = named("wearWatchStore")
 private val SURFACE_STORE = named("wearSurfaceStore")
 private val VAULT_STORE = named("wearVaultStore")
 private val PREFS_STORE = named("wearPrefsStore")
@@ -95,10 +114,24 @@ val wearSurfaceKoinModule = module {
     single { BuildSurfaceRefresher(get(), get(WATCH_SESSION_STATE), get(), clock = Instant::now) }
 }
 
+/**
+ * Builds the watch itself polls and alerts on: the watch registry in its own DataStore, the engine's fetcher over
+ * [WearBuilds] (so a 401 wipes the session once), the notifier and the service launcher. The rate limiter is the one
+ * in coreNetworkKoinModule.
+ */
+val wearAlertsKoinModule = module {
+    single<DataStore<Preferences>>(WATCH_STORE) { get<Context>().wearWatchDataStore }
+    single<WatchStore> { DataStoreWatchStore(get<DataStore<Preferences>>(WATCH_STORE)) }
+    single { WatchRegistry(get(), CoroutineScope(SupervisorJob() + Dispatchers.Default), System::currentTimeMillis) }
+    single<BuildFetcher> { WearBuildFetcher(get()) }
+    single { WearBuildNotifier(get<Context>()) }
+    single<WatchStarter> { RegistryWatchStarter(get()) { WearWatchService.start(get<Context>()) } }
+}
+
 /** The screens' ViewModels. They read the session through [WATCH_SESSION_STATE] and the data through [WearBuilds]. */
 val wearUiKoinModule = module {
     viewModel { BuildListViewModel(get(WATCH_SESSION_STATE), get()) }
-    viewModel { (build: BuildSummary) -> BuildDetailViewModel(get(WATCH_SESSION_STATE), get(), build) }
+    viewModel { (build: BuildSummary) -> BuildDetailViewModel(get(WATCH_SESSION_STATE), get(), get(), build) }
 }
 
 /** Every Koin module the watch app starts with. */
@@ -108,4 +141,5 @@ val wearKoinModules = listOf(
     wearKoinModule,
     wearUiKoinModule,
     wearSurfaceKoinModule,
+    wearAlertsKoinModule,
 )

@@ -24,13 +24,15 @@ class BuildDetailViewModelTest {
         fake: FakeWearBuilds,
         build: BuildSummary,
         session: WatchSessionState = CONNECTED,
-    ) = detailVm(fake, build, MutableStateFlow(session))
+        watcher: FakeWatchStarter = FakeWatchStarter(),
+    ) = detailVm(fake, build, MutableStateFlow(session), watcher)
 
     private fun detailVm(
         fake: FakeWearBuilds,
         build: BuildSummary,
         session: MutableStateFlow<WatchSessionState>,
-    ) = main.keep(BuildDetailViewModel::class.java) { BuildDetailViewModel(session, fake, build) }
+        watcher: FakeWatchStarter = FakeWatchStarter(),
+    ) = main.keep(BuildDetailViewModel::class.java) { BuildDetailViewModel(session, fake, watcher, build) }
 
     @Test
     fun runningBuildOffersCancelNotRetry() = main.runVmTest {
@@ -213,5 +215,69 @@ class BuildDetailViewModelTest {
         session.value = WatchSessionState.Stale
         advanceUntilIdle()
         assertTrue(vm.isOrphaned.value)
+    }
+
+    @Test
+    fun runningBuildCanBeWatchedAndStopped() = main.runVmTest {
+        val watcher = FakeWatchStarter()
+        val vm = detailVm(FakeWearBuilds(), RUNNING, watcher = watcher)
+        advanceUntilIdle()
+        assertTrue(vm.state.value.canWatch)
+        assertFalse(vm.state.value.isWatching)
+
+        vm.watch()
+        advanceUntilIdle()
+        assertEquals(listOf("start:$ACCOUNT:api/b-1"), watcher.calls)
+        assertTrue(vm.state.value.isWatching)
+
+        vm.stopWatching()
+        advanceUntilIdle()
+        assertEquals("stop:api/b-1", watcher.calls.last())
+        assertFalse(vm.state.value.isWatching)
+    }
+
+    @Test
+    fun watchingTwiceDoesNotStartTwice() = main.runVmTest {
+        val watcher = FakeWatchStarter()
+        val vm = detailVm(FakeWearBuilds(), RUNNING, watcher = watcher)
+        advanceUntilIdle()
+        vm.watch()
+        advanceUntilIdle()
+        vm.watch()
+        advanceUntilIdle()
+        assertEquals(1, watcher.calls.size)
+    }
+
+    @Test
+    fun finishedBuildCannotBeWatched() = main.runVmTest {
+        val watcher = FakeWatchStarter()
+        val vm = detailVm(FakeWearBuilds(), build(), watcher = watcher)
+        advanceUntilIdle()
+        assertFalse(vm.state.value.canWatch)
+        vm.watch()
+        assertTrue(watcher.calls.isEmpty())
+    }
+
+    @Test
+    fun watchIsRefusedWhenTheSessionIsNotConnected() = main.runVmTest {
+        val watcher = FakeWatchStarter()
+        val vm = detailVm(FakeWearBuilds(), RUNNING, WatchSessionState.Stale, watcher)
+        advanceUntilIdle()
+        vm.watch()
+        assertTrue(watcher.calls.isEmpty())
+    }
+
+    @Test
+    fun stateFollowsTheWatchEndingElsewhere() = main.runVmTest {
+        val watcher = FakeWatchStarter()
+        val vm = detailVm(FakeWearBuilds(), RUNNING, watcher = watcher)
+        advanceUntilIdle()
+        vm.watch()
+        advanceUntilIdle()
+        assertTrue(vm.state.value.isWatching)
+
+        watcher.keys.value = emptySet()
+        advanceUntilIdle()
+        assertFalse(vm.state.value.isWatching)
     }
 }

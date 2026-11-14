@@ -3,6 +3,9 @@
 
     <uses-feature android:name="android.hardware.type.watch" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- The module namespace is com.tomasps.virga, so component names must be fully qualified. -->
     <application
@@ -37,6 +40,12 @@
                     android:path="/virga/credential" />
             </intent-filter>
         </service>
+
+        <!-- Polls builds the wearer chose to watch. Runs only while a watch is active; never exported. -->
+        <service
+            android:name="com.tomasps.virga.wear.alerts.WearWatchService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <service
             android:name="com.tomasps.virga.wear.surfaces.BuildTileService"
