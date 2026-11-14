@@ -1,0 +1,77 @@
+name: Bug report
+description: Something in Virga does not work as it should
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. **Never paste an API token, account ID, or anything from a real account you would not post publicly.** For security problems, use [a private security report](https://github.com/Tresillo2017/virga/security/advisories/new) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+      placeholder: |
+        1. Open Compute → Workers → my-worker → Deployments
+        2. Tap Roll back
+        Expected: ... Actual: ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Sign-in and accounts
+        - Home and analytics
+        - Workers
+        - Workers Builds and Watch build
+        - Pages
+        - Domains and DNS
+        - R2
+        - D1
+        - KV
+        - Settings, theme or app lock
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: demo
+    attributes:
+      label: Does it happen in the demo account?
+      description: On the sign-in screen, choose Explore the demo. A bug that happens there is much easier to fix.
+      options:
+        - "Yes"
+        - "No, only with my account"
+        - Did not try
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Virga version
+      description: Settings → About, or the release you installed.
+      placeholder: 0.1.0-beta.1
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: Pixel 9, Android 16
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Screenshots or logs
+      description: Optional. Blur account names, IDs and hostnames you do not want public.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: This report contains no API tokens or other secrets.
+          required: true

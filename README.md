@@ -6,7 +6,7 @@ Virga is not affiliated with, endorsed by, or sponsored by Cloudflare, Inc. Clou
 
 ## Status
 
-Pre-release. Version 0.1.0 (`versionName`), not yet published. Tested on the JVM (see Testing) and on one Android 17 emulator with the demo account, including a minified release build signed with the debug key. Not run on any Android 9 or Android 16 device, not tested against a real production account with a least-privilege token, and not run on a lock screen or with two builds watched at once. See `docs/release-checklist.md` for what is left before a Play Store release.
+Beta. Download the latest APK from [Releases](https://github.com/Tresillo2017/virga/releases); pre-releases are signed with the same key as stable releases, so later versions install as updates. Tested on the JVM (see Testing) and on an Android 17 emulator with the demo account. Not yet tested on Android 9 or Android 16 devices, or against a production account with a least-privilege token. Bug reports are welcome. See `docs/release-checklist.md` for what is left before a Play Store release.
 
 ## Features by product
 
@@ -42,10 +42,10 @@ Requirements: Android Studio with JDK 17, Android SDK platform 37, and a device 
 ./gradlew testDebugUnitTest          # unit tests for every module
 ./gradlew koverXmlReport             # coverage (XML under each module's build/reports/kover)
 ./gradlew lintDebug                  # Android Lint
-./gradlew assembleRelease            # minified release APK (unsigned; see the release checklist)
+./gradlew assembleRelease            # minified release APK (unsigned locally)
 ```
 
-The release build uses R8 with rules in `app/proguard-rules.pro`. It is unsigned in the repository. The owner adds a signing configuration outside the repo.
+The release build uses R8 with rules in `app/proguard-rules.pro`. No signing key is in the repository: official releases are signed in CI from repository secrets.
 
 ## Releases
 
@@ -117,3 +117,11 @@ Feature modules depend only on `core:*`. Cross-feature links go through route ke
 | **All** | **13716 / 15344** | **89.4%** |
 
 Lowest figures: app (16.0%, not yet examined by line), feature:builds (76.1%) and feature:r2 (81.5%). The 80% target is met by every module except app, builds and r2. The per-class breakdown is not recorded here.
+
+## Contributing
+
+Bug reports, feature ideas and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first, and report security problems privately as described in [SECURITY.md](SECURITY.md).
+
+## License
+
+Virga is free software, licensed under the [GNU General Public License v3.0](LICENSE).
