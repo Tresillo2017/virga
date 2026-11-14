@@ -9,7 +9,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -84,6 +85,7 @@ internal fun HomeAnalyticsSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun LoadingRow() {
     val label = stringResource(R.string.home_section_analytics)
@@ -91,7 +93,7 @@ private fun LoadingRow() {
         modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp).semantics { contentDescription = label },
         horizontalArrangement = Arrangement.Center,
     ) {
-        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        LoadingIndicator(color = MaterialTheme.colorScheme.primary)
     }
 }
 

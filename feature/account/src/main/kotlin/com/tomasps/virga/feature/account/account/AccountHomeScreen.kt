@@ -12,7 +12,8 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -112,6 +113,7 @@ private fun AccountDetailsSection(details: UiState<AccountDetails>, onRetry: () 
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DetailsLoading() {
     val label = stringResource(R.string.account_loading)
@@ -122,7 +124,7 @@ private fun DetailsLoading() {
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        LoadingIndicator(color = MaterialTheme.colorScheme.primary)
     }
 }
 

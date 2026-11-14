@@ -5,17 +5,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.fragment.app.FragmentActivity
 import com.tomasps.virga.core.auth.session.SessionRepository
 import com.tomasps.virga.core.auth.session.SessionState
 import com.tomasps.virga.core.navigation.PendingNavigation
 import com.tomasps.virga.core.ui.brand.DarkSplash
 import com.tomasps.virga.core.ui.brand.SplashGate
 import com.tomasps.virga.core.ui.theme.VirgaTheme
+import com.tomasps.virga.core.ui.window.SecureWindow
+import com.tomasps.virga.core.ui.window.findActivity
 import com.tomasps.virga.feature.account.settings.ThemeMode
 import com.tomasps.virga.feature.account.settings.ThemeRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.withContext
 
 /**
@@ -63,18 +70,44 @@ private fun AfterSplash(
     ShellGate(readySession, readyThemes, pending)
 }
 
+/** The saved per-device settings that shape the whole shell. Known only once every flow has emitted. */
+private data class ShellPrefs(
+    val mode: ThemeMode,
+    val dynamicColor: Boolean,
+    val pureBlack: Boolean,
+    val blockScreenshots: Boolean,
+    val appLock: Boolean,
+)
+
+private fun ThemeRepository.shellPrefs(): Flow<ShellPrefs> =
+    combine(mode, dynamicColor, pureBlack, blockScreenshots, appLock) { mode, dynamic, black, secure, lock ->
+        ShellPrefs(mode, dynamic, black, secure, lock)
+    }
+
 @Composable
 private fun ShellGate(session: SessionRepository, themes: ThemeRepository, pending: PendingNavigation) {
     val sessionState by session.state.collectAsState()
-    val themeMode by themes.mode.collectAsState(initial = null)
-    val resolvedMode = themeMode
-    if (resolvedMode == null || sessionState == SessionState.Restoring) {
+    val prefsFlow = remember(themes) { themes.shellPrefs() }
+    val prefs by prefsFlow.collectAsState(initial = null)
+    val activity = LocalContext.current.findActivity() as? FragmentActivity
+    val authenticate: (onSuccess: () -> Unit) -> Unit = remember(activity) {
+        { onSuccess -> if (activity != null) showUnlockPrompt(activity, onSuccess) }
+    }
+    val ready = prefs
+    if (ready == null || sessionState == SessionState.Restoring) {
         DarkSplash(holdFinalFrame = true)
     } else {
-        val isDark = resolvedMode.isDark(isSystemInDarkTheme())
+        val isDark = ready.mode.isDark(isSystemInDarkTheme())
         SystemBarAppearance(isDark = isDark)
-        VirgaTheme(darkTheme = isDark) {
-            ShellHost(sessionState, pending)
+        VirgaTheme(darkTheme = isDark, dynamicColor = ready.dynamicColor, pureBlack = ready.pureBlack) {
+            val lockEngaged = ready.appLock && rememberDeviceSecure()
+            SecureWindow(enabled = ready.blockScreenshots)
+            HideFromRecents(enabled = lockEngaged)
+            // Held above the gate: locking takes the shell out of composition, and unlocking returns to the same screen.
+            val shell = rememberShellState(sessionState)
+            AppLockGate(enabled = lockEngaged, authenticate = authenticate) {
+                ShellHost(sessionState, pending, shell)
+            }
         }
     }
 }

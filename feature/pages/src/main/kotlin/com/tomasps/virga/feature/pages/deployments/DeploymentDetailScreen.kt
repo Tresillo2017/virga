@@ -5,7 +5,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -234,11 +235,12 @@ private fun DeploymentBody(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun LogBlock(logs: UiState<List<String>>?) {
     when (logs) {
         null -> Unit
-        is UiState.Loading -> CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+        is UiState.Loading -> LoadingIndicator(modifier = Modifier.padding(16.dp))
         is UiState.Failure -> Text(
             text = stringResource(R.string.pages_log_unavailable),
             style = MaterialTheme.typography.bodyMedium,

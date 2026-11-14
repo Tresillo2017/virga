@@ -1,35 +1,124 @@
 name: Release
 
-# Push a tag like v0.1.0 to cut a release:
-#   git tag v0.1.0 && git push origin v0.1.0
+# Builds, verifies and publishes one release from a tag. Three ways in:
+#   1. Push a tag:        git tag -a v1.2.0-beta.1 -m "Virga 1.2.0 beta 1" && git push origin v1.2.0-beta.1
+#   2. Prepare release:   the "Prepare release" workflow picks the next version, tags main and calls this workflow
+#   3. Run workflow:      re-run this workflow by hand for an existing tag (for example after a failed upload)
 #
-# Signing is optional. With these repository secrets set, the APK and AAB are signed with your key:
-#   VIRGA_KEYSTORE_BASE64     base64 of the .jks / .keystore file
-#   VIRGA_KEYSTORE_PASSWORD
-#   VIRGA_KEY_ALIAS
-#   VIRGA_KEY_PASSWORD
-# Without them the release is published as a pre-release with an unsigned APK, which cannot be installed
-# as an update and cannot go to Play.
+# Tags: vMAJOR.MINOR.PATCH is a stable release; -alpha.N, -beta.N and -rc.N are pre-releases.
+# See .github/scripts/release-version.sh for the versionCode scheme and docs/releasing.md for the whole process.
 #
-# With PLAY_SERVICE_ACCOUNT_JSON also set, the signed AAB is uploaded to the Play internal testing track.
+# Repository secrets:
+#   VIRGA_KEYSTORE_BASE64, VIRGA_KEYSTORE_PASSWORD, VIRGA_KEY_ALIAS, VIRGA_KEY_PASSWORD
+#       Upload key. Required for stable releases. Pre-releases without it are published unsigned and marked as such.
+#   PLAY_SERVICE_ACCOUNT_JSON   (optional)
+#       Uploads the signed bundle to Google Play: pre-releases to internal testing, stable releases to production
+#       as a draft that you roll out from the Play Console.
 
 on:
   push:
-    tags: ['v*.*.*']
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and publish, for example v1.2.0-rc.1
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag to build and publish
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
 jobs:
-  release:
-    name: Build and publish
+  prepare:
+    name: Validate tag
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      HAS_KEYSTORE: ${{ secrets.VIRGA_KEYSTORE_BASE64 != '' }}
-      HAS_PLAY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      name: ${{ steps.version.outputs.name }}
+      code: ${{ steps.version.outputs.code }}
+      channel: ${{ steps.version.outputs.channel }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      previous: ${{ steps.previous.outputs.tag }}
+      signed: ${{ steps.signing.outputs.signed }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+
+      - name: Parse version
+        id: version
+        run: .github/scripts/release-version.sh parse "$TAG" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Find the previous release
+        id: previous
+        env:
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          CODE: ${{ steps.version.outputs.code }}
+        run: |
+          # The release notes compare with the latest older release: any older tag for a pre-release,
+          # the latest older stable tag for a stable release.
+          previous=""
+          best=0
+          for t in $(git tag --list 'v*'); do
+            parsed=$(.github/scripts/release-version.sh parse "$t" 2>/dev/null) || continue
+            code=$(sed -n 's/^code=//p' <<<"$parsed")
+            pre=$(sed -n 's/^prerelease=//p' <<<"$parsed")
+            if (( code < CODE && code > best )) && { [ "$PRERELEASE" = true ] || [ "$pre" = false ]; }; then
+              best=$code
+              previous=$t
+            fi
+          done
+          echo "tag=$previous" >> "$GITHUB_OUTPUT"
+          echo "Previous release: ${previous:-none}"
+
+      - name: Stable releases come from main
+        if: steps.version.outputs.prerelease == 'false'
+        run: |
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "$TAG^{commit}" origin/main; then
+            echo "::error::Stable release $TAG must point at a commit on main."
+            exit 1
+          fi
+
+      - name: Signing
+        id: signing
+        env:
+          HAS_KEYSTORE: ${{ secrets.VIRGA_KEYSTORE_BASE64 != '' && secrets.VIRGA_KEYSTORE_PASSWORD != '' && secrets.VIRGA_KEY_ALIAS != '' && secrets.VIRGA_KEY_PASSWORD != '' }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          echo "signed=$HAS_KEYSTORE" >> "$GITHUB_OUTPUT"
+          if [ "$HAS_KEYSTORE" != true ]; then
+            if [ "$PRERELEASE" = false ]; then
+              echo "::error::Stable releases must be signed. Set the VIRGA_KEYSTORE_* repository secrets (see docs/releasing.md)."
+              exit 1
+            fi
+            echo "::warning::No signing key: this pre-release is published unsigned. Unsigned APKs cannot be installed."
+          fi
+
+  verify:
+    name: Tests and lint
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
 
       - uses: actions/setup-java@v6
         with:
@@ -38,75 +127,221 @@ jobs:
 
       - uses: android-actions/setup-android@v4
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
 
-      - name: Version from tag
-        id: version
-        run: |
-          name="${GITHUB_REF_NAME#v}"
-          if ! printf '%s' "$name" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
-            echo "Tag $GITHUB_REF_NAME is not a version like v1.2.3 or v1.2.3-beta.1" >&2
-            exit 1
-          fi
-          echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "code=$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+      - name: Unit and UI flow tests
+        run: ./gradlew testDebugUnitTest --continue --stacktrace
 
-      - name: Tests
-        run: ./gradlew testDebugUnitTest --stacktrace
+      - name: Lint
+        run: ./gradlew lintDebug --stacktrace
+
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-verify-reports
+          path: |
+            **/build/reports/tests/
+            **/build/reports/lint-results-*.html
+          retention-days: 14
+
+  build:
+    name: Build release
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VERSION_NAME: ${{ needs.prepare.outputs.name }}
+      VERSION_CODE: ${{ needs.prepare.outputs.code }}
+      SIGNED: ${{ needs.prepare.outputs.signed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v4
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
 
       - name: Decode keystore
-        if: env.HAS_KEYSTORE == 'true'
+        if: env.SIGNED == 'true'
         env:
           KEYSTORE_BASE64: ${{ secrets.VIRGA_KEYSTORE_BASE64 }}
         run: |
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/virga-release.jks"
           echo "VIRGA_KEYSTORE_FILE=$RUNNER_TEMP/virga-release.jks" >> "$GITHUB_ENV"
 
-      - name: Build release APK and bundle
+      - name: Build APK and bundle
         env:
           VIRGA_KEYSTORE_PASSWORD: ${{ secrets.VIRGA_KEYSTORE_PASSWORD }}
           VIRGA_KEY_ALIAS: ${{ secrets.VIRGA_KEY_ALIAS }}
           VIRGA_KEY_PASSWORD: ${{ secrets.VIRGA_KEY_PASSWORD }}
-          VERSION_NAME: ${{ steps.version.outputs.name }}
-          VERSION_CODE: ${{ steps.version.outputs.code }}
         run: >
           ./gradlew assembleRelease bundleRelease --stacktrace
           "-PvirgaVersionName=$VERSION_NAME"
           "-PvirgaVersionCode=$VERSION_CODE"
 
-      - name: Collect artifacts
-        env:
-          VERSION_NAME: ${{ steps.version.outputs.name }}
-        run: |
-          mkdir dist
-          suffix=""
-          if [ "$HAS_KEYSTORE" != "true" ]; then suffix="-unsigned"; fi
-          cp app/build/outputs/apk/release/*.apk "dist/virga-${VERSION_NAME}${suffix}.apk"
-          cp app/build/outputs/bundle/release/*.aab "dist/virga-${VERSION_NAME}${suffix}.aab"
-          if [ -f app/build/outputs/mapping/release/mapping.txt ]; then
-            cp app/build/outputs/mapping/release/mapping.txt "dist/mapping-${VERSION_NAME}.txt"
-          fi
-          (cd dist && sha256sum * > SHA256SUMS.txt)
-
       - name: Remove keystore
         if: always()
         run: rm -f "$RUNNER_TEMP/virga-release.jks"
 
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Virga ${{ steps.version.outputs.name }}
-          files: dist/*
-          generate_release_notes: true
-          prerelease: ${{ env.HAS_KEYSTORE != 'true' || contains(github.ref_name, '-') }}
+      - name: Check the built version
+        run: |
+          aapt2="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/aapt2"
+          badging=$("$aapt2" dump badging app/build/outputs/apk/release/*.apk | head -n 1)
+          echo "$badging"
+          grep -q "versionCode='$VERSION_CODE'" <<<"$badging" || { echo "::error::versionCode is not $VERSION_CODE"; exit 1; }
+          grep -q "versionName='$VERSION_NAME'" <<<"$badging" || { echo "::error::versionName is not $VERSION_NAME"; exit 1; }
 
-      - name: Upload to Play internal testing
-        if: env.HAS_KEYSTORE == 'true' && env.HAS_PLAY == 'true'
-        uses: r0adkll/upload-google-play@v1
+      - name: Verify signature
+        id: certificate
+        if: env.SIGNED == 'true'
+        run: |
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/apksigner"
+          "$apksigner" verify --verbose app/build/outputs/apk/release/*.apk
+          digest=$("$apksigner" verify --print-certs app/build/outputs/apk/release/*.apk \
+            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1)
+          [ -n "$digest" ] || { echo "::error::Could not read the signing certificate"; exit 1; }
+          echo "sha256=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Collect artifacts
+        env:
+          CERT_SHA256: ${{ steps.certificate.outputs.sha256 }}
+        run: |
+          mkdir dist
+          suffix=""
+          [ "$SIGNED" = true ] || suffix="-unsigned"
+          cp app/build/outputs/apk/release/*.apk "dist/virga-${VERSION_NAME}${suffix}.apk"
+          cp app/build/outputs/bundle/release/*.aab "dist/virga-${VERSION_NAME}${suffix}.aab"
+          cp app/build/outputs/mapping/release/mapping.txt "dist/virga-${VERSION_NAME}-mapping.txt"
+          (cd dist && sha256sum -- * > SHA256SUMS.txt)
+          printf '%s' "$CERT_SHA256" > dist/.certificate-sha256
+          ls -l dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ needs.prepare.outputs.name }}
+          path: dist/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish GitHub release
+    needs: [prepare, verify, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      VERSION_NAME: ${{ needs.prepare.outputs.name }}
+      VERSION_CODE: ${{ needs.prepare.outputs.code }}
+      CHANNEL: ${{ needs.prepare.outputs.channel }}
+      PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+      PREVIOUS: ${{ needs.prepare.outputs.previous }}
+      SIGNED: ${{ needs.prepare.outputs.signed }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-${{ needs.prepare.outputs.name }}
+          path: dist
+
+      - name: Write release notes
+        run: |
+          cert=$(cat dist/.certificate-sha256 2>/dev/null || true)
+          rm -f dist/.certificate-sha256
+          args=(-f "tag_name=$RELEASE_TAG")
+          [ -n "$PREVIOUS" ] && args+=(-f "previous_tag_name=$PREVIOUS")
+          changes=$(gh api "repos/$GH_REPO/releases/generate-notes" "${args[@]}" --jq .body)
+
+          {
+            if [ "$PRERELEASE" = true ]; then
+              echo "> [!WARNING]"
+              echo "> **Pre-release ($CHANNEL).** For testing. Expect rough edges, and back up nothing you cannot lose."
+              echo
+            fi
+            if [ "$SIGNED" != true ]; then
+              echo "> [!CAUTION]"
+              echo "> This build is **unsigned** and cannot be installed as is. It exists to check the build, not to use."
+              echo
+            fi
+            echo "## Install"
+            echo
+            echo "Download \`$(cd dist && ls virga-*.apk)\` below and open it on an Android 9 or newer device."
+            echo "Updates install over an earlier Virga release signed with the same key."
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Version | $VERSION_NAME (code $VERSION_CODE) |"
+            echo "| Channel | $CHANNEL |"
+            [ -n "$cert" ] && echo "| Signing certificate SHA-256 | \`$cert\` |"
+            echo
+            echo "Check a download with \`sha256sum -c SHA256SUMS.txt\`. The mapping file is for reading crash traces."
+            echo
+            echo "$changes"
+          } > notes.md
+          cat notes.md
+
+      - name: Create or update the release
+        run: |
+          title="Virga $VERSION_NAME"
+          flags=()
+          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease --latest=false); else flags+=(--latest); fi
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            # A re-run replaces the assets and notes of the existing release instead of failing.
+            gh release edit "$RELEASE_TAG" --title "$title" --notes-file notes.md "${flags[@]}"
+            gh release upload "$RELEASE_TAG" dist/* --clobber
+          else
+            gh release create "$RELEASE_TAG" dist/* --verify-tag --title "$title" --notes-file notes.md "${flags[@]}"
+          fi
+
+      - name: Summary
+        run: |
+          {
+            echo "### Virga $VERSION_NAME published"
+            echo "- Channel: $CHANNEL (versionCode $VERSION_CODE), signed: $SIGNED"
+            echo "- Compared with: ${PREVIOUS:-first release}"
+            echo "- $(gh release view "$RELEASE_TAG" --json url --jq .url)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  play:
+    name: Upload to Google Play
+    needs: [prepare, publish]
+    if: needs.prepare.outputs.signed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HAS_PLAY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+    steps:
+      - name: Skip without Play credentials
+        if: env.HAS_PLAY != 'true'
+        run: echo "PLAY_SERVICE_ACCOUNT_JSON is not set; the release is on GitHub only."
+
+      - uses: actions/download-artifact@v8
+        if: env.HAS_PLAY == 'true'
+        with:
+          name: release-${{ needs.prepare.outputs.name }}
+          path: dist
+
+      - uses: r0adkll/upload-google-play@v1
+        if: env.HAS_PLAY == 'true'
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.tomasps.virga
-          releaseFiles: dist/*.aab
-          track: internal
-          status: draft
-          mappingFile: app/build/outputs/mapping/release/mapping.txt
+          releaseFiles: dist/virga-${{ needs.prepare.outputs.name }}.aab
+          mappingFile: dist/virga-${{ needs.prepare.outputs.name }}-mapping.txt
+          releaseName: ${{ needs.prepare.outputs.name }}
+          # Pre-releases go straight to internal testers. Stable releases land in production as a draft, so a person
+          # starts the rollout from the Play Console.
+          track: ${{ needs.prepare.outputs.prerelease == 'true' && 'internal' || 'production' }}
+          status: ${{ needs.prepare.outputs.prerelease == 'true' && 'completed' || 'draft' }}

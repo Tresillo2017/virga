@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 
 private const val TAG = "Virga"
@@ -40,7 +41,8 @@ class VirgaApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        val koin = startKoin {
+        // The graph is process-wide, and a test host can create this Application again: reuse a graph that is already up.
+        val koin = GlobalContext.getOrNull() ?: startKoin {
             androidContext(this@VirgaApplication)
             modules(virgaKoinModules)
         }.koin

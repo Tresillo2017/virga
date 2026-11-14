@@ -191,8 +191,9 @@ class AccountDemoFlowTest {
     fun `section header text lines up with row text on the settings screen`() {
         flow.show(Settings)
 
-        val header = compose.onNodeWithText("Appearance", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        val rowText = compose.onNodeWithText("Follow system", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        // Compared on a plain list row: the theme choice may be a centred button group, not a row.
+        val header = compose.onNodeWithText("Session", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val rowText = compose.onNodeWithText("Sign out", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
 
         assertEquals(header.left, rowText.left, 0.5f)
     }

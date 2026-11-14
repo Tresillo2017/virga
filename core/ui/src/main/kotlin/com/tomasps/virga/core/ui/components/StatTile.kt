@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +28,6 @@ data class StatDelta(
 )
 
 private val TILE_PADDING = 12.dp
-private val TILE_CORNER = 14.dp
 private val TEXT_GAP = 4.dp
 private val SPARKLINE_GAP = 6.dp
 
@@ -48,7 +46,7 @@ fun StatTile(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(TILE_CORNER))
+            .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(TILE_PADDING)
             .semantics(mergeDescendants = true) {},

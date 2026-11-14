@@ -5,7 +5,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,7 +14,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.ui.unit.dp
 
-private val BLOCK_CORNER = 10.dp
 private val BLOCK_PADDING = 12.dp
 
 /**
@@ -32,7 +30,7 @@ fun CodeBlock(
         Text(
             text = code,
             modifier = Modifier
-                .clip(RoundedCornerShape(BLOCK_CORNER))
+                .clip(MaterialTheme.shapes.small)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                 .then(if (wrap) Modifier.fillMaxWidth() else Modifier.horizontalScroll(rememberScrollState()))
                 .padding(BLOCK_PADDING),

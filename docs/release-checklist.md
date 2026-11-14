@@ -1,12 +1,11 @@
 # Release checklist: Virga for Google Play
 
-Everything the owner still has to do before a Play Store release. The repository does not contain a release signing key, and the app is not yet tested against a real production account. Items marked **Blocker** must be done before upload.
+Everything the owner still has to do before a Play Store release. The repository does not contain a signing key (releases are signed in CI, see `docs/releasing.md`), and the app is not yet tested against a real production account. Items marked **Blocker** must be done before upload.
 
-## 1. Signing (Blocker)
+## 1. Signing (done)
 
-- Create an upload key in a password manager or hardware-backed store. Never commit it, and never put it in `gradle.properties`.
-- Add a release `signingConfig` in a local-only file (for example `keystore.properties` in `.gitignore`) or enroll in Play App Signing and upload with an upload key.
-- Confirm the signed APK or AAB installs over a debug build only if the keys match. Expect a fresh install otherwise.
+- The upload key is in the `VIRGA_KEYSTORE_*` repository secrets, and the Release workflow signs every release with it. Keep a copy of the keystore and its password in a password manager.
+- Enroll in Play App Signing when creating the Play listing, and register this key as the upload key.
 - Keep the R8 keep rules in `app/proguard-rules.pro` and `wear/proguard-rules.pro` and re-run the minified smoke test after any dependency upgrade.
 
 ## 2. Watch build service: Play Console declaration (Blocker)

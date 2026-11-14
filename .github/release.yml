@@ -1,0 +1,24 @@
+# Groups the generated release notes by pull request label. Used by the Release workflow.
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+    authors:
+      - dependabot[bot]
+  categories:
+    - title: Breaking changes
+      labels: [breaking]
+    - title: New features
+      labels: [feature, enhancement]
+    - title: Fixes
+      labels: [bug, fix]
+    - title: Security
+      labels: [security]
+    - title: Design and accessibility
+      labels: [design, accessibility]
+    - title: Performance
+      labels: [performance]
+    - title: Build, CI and dependencies
+      labels: [ci, build, dependencies]
+    - title: Other changes
+      labels: ["*"]

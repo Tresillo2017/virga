@@ -6,7 +6,7 @@ Virga is not affiliated with, endorsed by, or sponsored by Cloudflare, Inc. Clou
 
 ## Status
 
-Pre-release. Version 0.1.0 (`versionName`), not yet published. Tested on the JVM (see Testing) and on one Android 17 emulator with the demo account, including a minified release build signed with the debug key. Not run on any Android 9 or Android 16 device, not tested against a real production account with a least-privilege token, and not run on a lock screen or with two builds watched at once. The Wear OS companion (below) has not been run on a Wear emulator or a physical watch. It is verified by JVM and Robolectric tests only, its 24h summary tile query has not been run against the live Cloudflare API, and the credential handoff has not been tried over a real Data Layer between two devices. See `docs/release-checklist.md` for what is left before a Play Store release.
+Beta. Download the latest APK from [Releases](https://github.com/Tresillo2017/virga/releases); pre-releases are signed with the same key as stable releases, so later versions install as updates. Tested on the JVM (see Testing) and on an Android 17 emulator with the demo account. Not yet tested on Android 9 or Android 16 devices, or against a production account with a least-privilege token. The Wear OS companion (below) has not been run on a Wear emulator or a physical watch. It is verified by JVM and Robolectric tests only, its 24h summary tile query has not been run against the live Cloudflare API, and the credential handoff has not been tried over a real Data Layer between two devices. Bug reports are welcome. See `docs/release-checklist.md` for what is left before a Play Store release.
 
 ## Features by product
 
@@ -42,10 +42,14 @@ Requirements: Android Studio with JDK 17, Android SDK platform 37, and a device 
 ./gradlew testDebugUnitTest          # unit tests for every module
 ./gradlew koverXmlReport             # coverage (XML under each module's build/reports/kover)
 ./gradlew lintDebug                  # Android Lint
-./gradlew assembleRelease            # minified release APK (unsigned; see the release checklist)
+./gradlew assembleRelease            # minified release APK (unsigned locally)
 ```
 
-The release build uses R8 with rules in `app/proguard-rules.pro`. It is unsigned in the repository. The owner adds a signing configuration outside the repo.
+The release build uses R8 with rules in `app/proguard-rules.pro`. No signing key is in the repository: official releases are signed in CI from repository secrets.
+
+## Releases
+
+Releases are cut by GitHub Actions from a tag: stable (`v1.3.0`) or pre-release (`v1.3.0-alpha.1`, `-beta.1`, `-rc.1`). Run **Prepare release** in the Actions tab to pick the next version and publish it, or push a tag by hand. Each GitHub release carries the APK, the app bundle, the R8 mapping file and SHA-256 checksums. Signing keys come from repository secrets. See `docs/releasing.md`.
 
 ## Wear OS companion
 
@@ -151,3 +155,11 @@ Feature modules depend only on `core:*`, with one exception: `:feature:builds` m
 | **All** | **13716 / 15344** | **89.4%** |
 
 Lowest figures: app (16.0%, not yet examined by line), feature:builds (76.1%) and feature:r2 (81.5%). The 80% target is met by every module except app, builds and r2. The per-class breakdown is not recorded here.
+
+## Contributing
+
+Bug reports, feature ideas and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first, and report security problems privately as described in [SECURITY.md](SECURITY.md).
+
+## License
+
+Virga is free software, licensed under the [GNU General Public License v3.0](LICENSE).

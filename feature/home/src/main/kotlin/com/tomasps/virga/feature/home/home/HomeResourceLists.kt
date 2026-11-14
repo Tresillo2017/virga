@@ -4,7 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -183,12 +184,13 @@ private fun ResourceNote(text: String) {
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun LoadingNote() {
     Row(
         modifier = Modifier.padding(horizontal = NOTE_PADDING_HORIZONTAL, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), color = MaterialTheme.colorScheme.primary)
+        LoadingIndicator(modifier = Modifier.padding(end = 8.dp), color = MaterialTheme.colorScheme.primary)
     }
 }

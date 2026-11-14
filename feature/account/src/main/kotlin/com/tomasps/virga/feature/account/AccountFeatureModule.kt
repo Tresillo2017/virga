@@ -11,6 +11,7 @@ import com.tomasps.virga.core.navigation.RouteRegistry
 import com.tomasps.virga.core.navigation.Settings
 import com.tomasps.virga.core.navigation.SignIn
 import com.tomasps.virga.core.network.demo.DemoRouteContributor
+import com.tomasps.virga.core.ui.components.DefaultTimeRangeSource
 import com.tomasps.virga.feature.account.R
 import com.tomasps.virga.feature.account.about.AboutRoute
 import com.tomasps.virga.feature.account.account.AccountHomeViewModel
@@ -36,6 +37,7 @@ private val Context.themeDataStore: DataStore<Preferences> by preferencesDataSto
 /** Koin bindings for the account feature. Needs a Context and the core:auth and core:network bindings. */
 val accountKoinModule = module {
     single { ThemeRepository(get<Context>().themeDataStore) }
+    single<DefaultTimeRangeSource> { get<ThemeRepository>() }
     single {
         val context: Context = get()
         AccountDemoRoutes(

@@ -1,0 +1,29 @@
+name: Feature request
+description: Suggest something Virga should do
+labels: [enhancement, needs-triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The task you want to get done from your phone, and why the current app or the web dashboard makes it hard.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would help
+      description: How you picture it working. Rough is fine.
+    validations:
+      required: true
+  - type: input
+    id: api
+    attributes:
+      label: Cloudflare API endpoint
+      description: Optional. Virga can only do what the Cloudflare API allows; a link to the endpoint in the API docs helps a lot.
+      placeholder: https://developers.cloudflare.com/api/resources/...
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Optional. Other ways you have tried, or other apps that do it well.
