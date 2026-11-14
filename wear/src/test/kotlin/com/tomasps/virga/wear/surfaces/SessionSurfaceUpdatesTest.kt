@@ -15,7 +15,7 @@ class SessionSurfaceUpdatesTest {
     private val connected = WatchSessionState.Connected("a1", isDemo = false)
 
     @Test
-    fun everySettledSessionChangeRequestsOneUpdate() = runTest(UnconfinedTestDispatcher()) {
+    fun everySessionChangeAfterRestoreRequestsOneUpdate() = runTest(UnconfinedTestDispatcher()) {
         val session = MutableStateFlow<WatchSessionState>(WatchSessionState.Restoring)
         val updater = FakeSurfaceUpdater()
         val job = launch { SessionSurfaceUpdates(session, updater).run() }
@@ -24,7 +24,23 @@ class SessionSurfaceUpdatesTest {
         session.value = WatchSessionState.Stale
         session.value = WatchSessionState.NotConnected
 
-        assertEquals(3, updater.requests)
+        assertEquals(2, updater.requests)
+        job.cancel()
+    }
+
+    /**
+     * A tile or complication request can cold-start the process; re-requesting every surface for the restore result
+     * would make each of them refresh over the network again.
+     */
+    @Test
+    fun theRestoreResultAloneRequestsNothing() = runTest(UnconfinedTestDispatcher()) {
+        val session = MutableStateFlow<WatchSessionState>(WatchSessionState.Restoring)
+        val updater = FakeSurfaceUpdater()
+        val job = launch { SessionSurfaceUpdates(session, updater).run() }
+
+        session.value = connected
+
+        assertEquals(0, updater.requests)
         job.cancel()
     }
 
@@ -46,7 +62,7 @@ class SessionSurfaceUpdatesTest {
 
         session.value = WatchSessionState.Connected("a2", isDemo = false)
 
-        assertEquals(2, updater.requests)
+        assertEquals(1, updater.requests)
         job.cancel()
     }
 }
