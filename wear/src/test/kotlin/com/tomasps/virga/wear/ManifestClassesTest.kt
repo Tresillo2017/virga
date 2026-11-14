@@ -96,6 +96,18 @@ class ManifestClassesTest {
         assertEquals("900", meta["android.support.wearable.complications.UPDATE_PERIOD_SECONDS"])
     }
 
+    /** The listener only hears the phone's item if its filter names exactly the path the phone writes. */
+    @Test
+    fun handoffListenerFiltersTheCredentialPath() {
+        val listener = service("com.tomasps.virga.wear.session.HandoffListenerService")
+        val data = listener.getElementsByTagName("data").item(0) as Element
+
+        assertEquals(listOf("com.google.android.gms.wearable.DATA_CHANGED"), listener.actions())
+        assertEquals("wear", data.getAttributeNS(androidNs, "scheme"))
+        assertEquals("*", data.getAttributeNS(androidNs, "host"))
+        assertEquals(com.tomasps.virga.core.wearsync.HandoffPaths.CREDENTIAL, data.getAttributeNS(androidNs, "path"))
+    }
+
     @Test
     fun tileFreshnessIsFifteenMinutes() {
         assertEquals(15L * 60 * 1000, com.tomasps.virga.wear.surfaces.TILE_FRESHNESS_MILLIS)
