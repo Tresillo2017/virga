@@ -16,13 +16,18 @@ dependencies {
     implementation(libs.koin.core)
     implementation(libs.koin.android)
     implementation(libs.koin.compose.viewmodel)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.play.services.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.koin.test)
+    testImplementation(libs.androidx.datastore.preferences)
 
     implementation(project(":core:common"))
     implementation(project(":core:network"))
     implementation(project(":core:auth"))
+    implementation(project(":core:wearsync"))
     implementation(project(":core:navigation"))
     implementation(project(":core:ui"))
     implementation(project(":feature:account"))

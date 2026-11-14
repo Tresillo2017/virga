@@ -12,6 +12,7 @@ import com.tomasps.virga.feature.kv.kvKoinModule
 import com.tomasps.virga.feature.pages.pagesKoinModule
 import com.tomasps.virga.feature.r2.r2KoinModule
 import com.tomasps.virga.feature.workers.workersKoinModule
+import com.tomasps.virga.wearsync.wearSyncKoinModule
 import org.koin.core.module.Module
 
 /** Every Koin module the app starts with, in start order. [VirgaApplication] and the graph test both read it. */
@@ -29,4 +30,5 @@ val virgaKoinModules: List<Module> = listOf(
     r2KoinModule,
     d1KoinModule,
     kvKoinModule,
+    wearSyncKoinModule,
 )

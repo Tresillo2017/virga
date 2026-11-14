@@ -1,0 +1,185 @@
+package com.tomasps.virga.wearsync
+
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.tomasps.virga.core.auth.Credential
+import com.tomasps.virga.core.auth.session.CloudflareAccount
+import com.tomasps.virga.core.auth.session.SessionRepository
+import com.tomasps.virga.core.auth.session.SessionState
+import com.tomasps.virga.core.auth.vault.CredentialVault
+import com.tomasps.virga.core.auth.vault.SealedBytes
+import com.tomasps.virga.core.auth.vault.SecretCipher
+import com.tomasps.virga.core.common.result.ApiResult
+import com.tomasps.virga.core.wearsync.HandoffAccount
+import com.tomasps.virga.core.wearsync.HandoffPayload
+import com.tomasps.virga.core.wearsync.HandoffTransport
+import com.tomasps.virga.core.common.DispatcherProvider
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.io.File
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class HandoffPublisherTest {
+
+    @get:Rule
+    val folder = TemporaryFolder()
+
+    private class FakeTransport : HandoffTransport {
+        val published = mutableListOf<HandoffPayload>()
+        var clears = 0
+        override suspend fun publish(payload: HandoffPayload) { published += payload }
+        override suspend fun clear() { clears++ }
+    }
+
+    private class FakeSession(initial: SessionState) : SessionRepository {
+        override val state = MutableStateFlow(initial)
+        override suspend fun restore() = Unit
+        override suspend fun signInWithToken(token: String): ApiResult<Unit> = error("unused")
+        override suspend fun enterDemo(): ApiResult<Unit> = error("unused")
+        override suspend fun selectAccount(accountId: String) = Unit
+        override suspend fun signOut() = Unit
+    }
+
+    /** Identity "encryption": the vault round-trips without Keystore. */
+    private class PlainCipher(private val failDecrypt: Boolean = false) : SecretCipher {
+        override fun encrypt(plaintext: ByteArray) = SealedBytes(ByteArray(1), plaintext)
+        override fun decrypt(sealed: SealedBytes): ByteArray {
+            if (failDecrypt) error("lost key")
+            return sealed.ciphertext
+        }
+    }
+
+    private fun TestScope2.vault(cipher: SecretCipher = PlainCipher()) = CredentialVault(
+        PreferenceDataStoreFactory.create(scope = scope) { File(folder.root, "v.preferences_pb") },
+        cipher,
+        // Keeps vault reads on the test dispatcher so a publish has finished by the time the test asserts.
+        object : DispatcherProvider {
+            override val io: CoroutineDispatcher = dispatcher
+            override val default: CoroutineDispatcher = dispatcher
+        },
+    )
+
+    private class TestScope2(val scope: CoroutineScope, val dispatcher: CoroutineDispatcher)
+
+    private val accounts = listOf(CloudflareAccount("a1", "One"), CloudflareAccount("a2", "Two"))
+    private fun signedIn(selected: String? = "a1", demo: Boolean = false) =
+        SessionState.SignedIn(accounts, selected, demo)
+
+    private fun TestScope2.publisher(
+        session: SessionRepository,
+        vault: CredentialVault,
+        transport: HandoffTransport,
+        now: () -> Long = { 1_000L },
+    ) = HandoffPublisher(session, vault, transport, now)
+
+    private fun kotlinx.coroutines.test.TestScope.harness() =
+        UnconfinedTestDispatcher(testScheduler).let { TestScope2(CoroutineScope(Job() + it), it) }
+
+    @Test
+    fun signedInPublishesTokenAccountsAndSelection() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        h.publisher(FakeSession(signedIn("a2")), vault, transport).start(h.scope)
+
+        val p = transport.published.single()
+        assertEquals("tok", p.token)
+        assertEquals(false, p.isDemo)
+        assertEquals(listOf(HandoffAccount("a1", "One"), HandoffAccount("a2", "Two")), p.accounts)
+        assertEquals("a2", p.selectedAccountId)
+        assertEquals(HandoffPayload.CURRENT_VERSION, p.version)
+        assertEquals(1_000L, p.sentAtMillis)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun demoPublishesNoTokenAndDemoFlag() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.Demo) }
+        val transport = FakeTransport()
+        h.publisher(FakeSession(signedIn(demo = true)), vault, transport).start(h.scope)
+
+        val p = transport.published.single()
+        assertNull(p.token)
+        assertTrue(p.isDemo)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun signOutClearsTransport() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        val session = FakeSession(signedIn())
+        h.publisher(session, vault, transport).start(h.scope)
+
+        session.state.value = SessionState.SignedOut
+
+        assertEquals(1, transport.clears)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun restoringPublishesNothing() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        h.publisher(FakeSession(SessionState.Restoring), vault, transport).start(h.scope)
+
+        assertTrue(transport.published.isEmpty())
+        assertEquals(0, transport.clears)
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun accountSwitchRepublishesWithNewSelection() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        val session = FakeSession(signedIn("a1"))
+        h.publisher(session, vault, transport).start(h.scope)
+
+        session.state.value = signedIn("a2")
+
+        assertEquals(listOf("a1", "a2"), transport.published.map { it.selectedAccountId })
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun heartbeatRepublishesWithFreshTimestamp() = runTest {
+        val h = harness()
+        val vault = h.vault().also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        var time = 1_000L
+        val publisher = h.publisher(FakeSession(signedIn()), vault, transport) { time }
+        publisher.start(h.scope)
+
+        time = 9_000L
+        publisher.heartbeat()
+
+        assertEquals(listOf(1_000L, 9_000L), transport.published.map { it.sentAtMillis })
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+
+    @Test
+    fun unreadableVaultPublishesNothing() = runTest {
+        val h = harness()
+        val vault = h.vault(PlainCipher(failDecrypt = true)).also { it.write(Credential.ApiToken("tok")) }
+        val transport = FakeTransport()
+        h.publisher(FakeSession(signedIn()), vault, transport).start(h.scope)
+
+        assertTrue(transport.published.isEmpty())
+        h.scope.coroutineContext[Job]!!.cancel()
+    }
+}

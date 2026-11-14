@@ -15,6 +15,8 @@ import com.tomasps.virga.feature.kv.kvKoinModule
 import com.tomasps.virga.feature.pages.pagesKoinModule
 import com.tomasps.virga.feature.r2.r2KoinModule
 import com.tomasps.virga.feature.workers.workersKoinModule
+import com.tomasps.virga.wearsync.HandoffPublisher
+import com.tomasps.virga.wearsync.startWearSync
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +47,10 @@ class VirgaApplication : Application() {
         // Restores the session once per process, not once per Activity. The splash waits on it. Building the session
         // graph (the HTTP client, the Keystore-backed vault) happens off the main thread, so the first frames are not
         // held up by it.
-        startupScope.launch { koin.get<SessionRepository>().restore() }
+        startupScope.launch {
+            // Starts before restore so the first SignedIn state is published to the watch.
+            startWearSync(startupScope, this@VirgaApplication, koin.get(), koin.get<HandoffPublisher>())
+            koin.get<SessionRepository>().restore()
+        }
     }
 }
