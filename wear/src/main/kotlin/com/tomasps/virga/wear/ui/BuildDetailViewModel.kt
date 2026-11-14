@@ -9,6 +9,9 @@ import com.tomasps.virga.wear.builds.RetryPlan
 import com.tomasps.virga.wear.builds.WearBuilds
 import com.tomasps.virga.wear.session.WatchSessionState
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -42,8 +45,16 @@ class BuildDetailViewModel(
     initial: BuildSummary,
 ) : ViewModel() {
 
+    /** The account this screen was opened under. Actions never run under a different one. */
+    private val pinnedAccountId: String? = (session.value as? WatchSessionState.Connected)?.accountId
+
     private val mutableState = MutableStateFlow(stateFor(initial, retryPlan = null))
     val state: StateFlow<DetailState> = mutableState.asStateFlow()
+
+    /** True once the session is no longer connected to the pinned account, so the screen should close. */
+    val isOrphaned: StateFlow<Boolean> = session
+        .map { it.connectedAccountId() != pinnedAccountId || pinnedAccountId == null }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, pinnedAccountId == null)
 
     init {
         viewModelScope.launch { load() }
@@ -59,7 +70,11 @@ class BuildDetailViewModel(
     /** Makes the call that [cancel] or [retry] asked about. Does nothing when nothing is waiting for confirmation. */
     fun confirm() {
         val pending = mutableState.value.action as? ActionState.Confirming ?: return
-        val accountId = accountId() ?: return
+        val accountId = activeAccountId()
+        if (accountId == null) {
+            setAction(ActionState.Idle)
+            return
+        }
         setAction(ActionState.Running)
         viewModelScope.launch { run(pending.kind, accountId) }
     }
@@ -80,7 +95,7 @@ class BuildDetailViewModel(
 
     /** Reads the build again, then the retry plan if the build has stopped. A failed read keeps what is shown. */
     private suspend fun load() {
-        val accountId = accountId() ?: return
+        val accountId = activeAccountId() ?: return
         val listed = mutableState.value.build
         val fresh = (builds.detail(accountId, listed) as? ApiResult.Success)?.value ?: listed
         val plan = if (fresh.status == BuildStatus.STOPPED) {
@@ -91,7 +106,10 @@ class BuildDetailViewModel(
         mutableState.update { stateFor(fresh, plan).copy(action = it.action) }
     }
 
-    private fun accountId(): String? = (session.value as? WatchSessionState.Connected)?.accountId
+    /** The pinned account, only while the session is still connected to it. */
+    private fun activeAccountId(): String? = pinnedAccountId?.takeIf { it == session.value.connectedAccountId() }
+
+    private fun WatchSessionState.connectedAccountId(): String? = (this as? WatchSessionState.Connected)?.accountId
 
     private fun setAction(action: ActionState) = mutableState.update { it.copy(action = action) }
 

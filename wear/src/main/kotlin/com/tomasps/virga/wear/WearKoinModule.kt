@@ -68,7 +68,7 @@ val wearKoinModule = module {
     single<CredentialProvider> { StalenessGuardedCredentialProvider(get(), get()) }
     single { BuildsRepository(get(), get()) }
     single(WATCH_SESSION_STATE) { get<WatchSessionRepository>().state }
-    single<WearBuilds> {
+    single {
         val session = get<WatchSessionRepository>()
         val credentials = get<CredentialProvider>()
         WearBuildsSource(
@@ -76,7 +76,7 @@ val wearKoinModule = module {
             onUnauthorized = { session.onUnauthorized() },
             hasToken = { credentials.bearerToken() != null },
         )
-    }
+    } bind WearBuilds::class
 }
 
 /** The screens' ViewModels. They read the session through [WATCH_SESSION_STATE] and the data through [WearBuilds]. */

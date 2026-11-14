@@ -44,5 +44,6 @@ fun ErrorKind.phrase(): String = stringResource(
         ErrorKind.Offline -> R.string.error_offline
         ErrorKind.TokenRejected -> R.string.error_token_rejected
         ErrorKind.RateLimited -> R.string.error_rate_limited
+        ErrorKind.SomethingWrong -> R.string.error_something_wrong
     },
 )

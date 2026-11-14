@@ -14,6 +14,8 @@
     <string name="error_offline">Offline</string>
     <string name="error_token_rejected">Token rejected</string>
     <string name="error_rate_limited">Rate limited</string>
+    <string name="error_something_wrong">Something went wrong</string>
+    <string name="status_with_age">%1$s · %2$s</string>
 
     <string name="connect_not_connected">Open Virga on your phone to connect</string>
     <string name="connect_stale">Reconnect from phone</string>

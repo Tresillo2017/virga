@@ -4,7 +4,9 @@ package com.tomasps.virga.wear.ui
 
 import android.content.Context
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onFirst
@@ -14,6 +16,8 @@ import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import androidx.compose.ui.semantics.SemanticsActions
 import com.tomasps.virga.core.auth.session.ActiveCredential
 import com.tomasps.virga.core.common.DispatcherProvider
+import com.tomasps.virga.core.common.result.ApiError
+import com.tomasps.virga.core.common.result.ApiResult
 import com.tomasps.virga.core.network.CredentialProvider
 import com.tomasps.virga.core.network.coreNetworkKoinModule
 import com.tomasps.virga.core.network.demo.DemoMode
@@ -63,6 +67,7 @@ class WearFlowTest {
 
     private val session = MutableStateFlow<WatchSessionState>(WatchSessionState.Connected(DEMO_ACCOUNT, isDemo = true))
     private lateinit var koinApp: KoinApplication
+    private var scripted: WearBuilds? = null
 
     @Before
     fun setUp() {
@@ -78,7 +83,7 @@ class WearFlowTest {
                     single { BuildsDemoRoutes() } bind DemoRouteContributor::class
                     single { WearDemoRoutes() } bind DemoRouteContributor::class
                     single { BuildsRepository(get(), get()) }
-                    single<WearBuilds> { WearBuildsSource(get(), onUnauthorized = {}, hasToken = { true }) }
+                    single<WearBuilds> { scripted ?: WearBuildsSource(get(), onUnauthorized = {}, hasToken = { true }) }
                     single<StateFlow<WatchSessionState>>(WATCH_SESSION_STATE) { session }
                 },
                 wearUiKoinModule,
@@ -135,6 +140,26 @@ class WearFlowTest {
         session.value = WatchSessionState.NotConnected
         showApp()
         waitForText("Open Virga on your phone to connect")
+        compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+        compose.onAllNodes(hasClickAction()).assertCountEquals(0)
+    }
+
+    @Test
+    fun serverErrorShowsSomethingWentWrongNotBlank() {
+        scripted = FakeWearBuilds(recent = failure(ApiError.Server(503)))
+        showApp()
+        waitForText("Something went wrong")
+    }
+
+    @Test
+    fun buildWithNoBranchAndNoCommitShowsWithoutRetry() {
+        val bare = build().copy(branch = null, commitHash = null)
+        scripted = FakeWearBuilds(recent = ApiResult.Success(listOf(bare)), plan = ApiResult.Success(null))
+        showApp()
+        click("api")
+        // The detail status line is plain text; the list row it came from is a button.
+        compose.waitUntilAtLeastOneExists(hasText("Passed", substring = true) and !hasClickAction(), WAIT_MS)
+        compose.onAllNodes(hasText("Retry build")).assertCountEquals(0)
     }
 
     @Test

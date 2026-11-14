@@ -130,4 +130,11 @@ class BuildListViewModelTest {
         advanceUntilIdle()
         assertEquals(ListState.NotConnected, vm.state.value)
     }
+
+    @Test
+    fun serverErrorShowsSomethingWentWrongNeverBlank() = main.runVmTest {
+        val vm = listVm(MutableStateFlow(CONNECTED), FakeWearBuilds(recent = failure(ApiError.Server(503))))
+        advanceUntilIdle()
+        assertEquals(ListState.Error(ErrorKind.SomethingWrong), vm.state.value)
+    }
 }

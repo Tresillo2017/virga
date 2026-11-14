@@ -51,7 +51,7 @@ private fun BuildFacts(state: DetailState, onCancel: () -> Unit, onRetry: () -> 
             item { ListHeader { Text(build.scriptName, maxLines = 2) } }
             item {
                 Text(
-                    "${build.visualState().label()} · ${model.detail}",
+                    stringResource(R.string.status_with_age, build.visualState().label(), model.detail),
                     color = build.visualState().color(),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),

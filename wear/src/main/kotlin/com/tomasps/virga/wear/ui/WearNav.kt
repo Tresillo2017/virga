@@ -1,5 +1,6 @@
 package com.tomasps.virga.wear.ui
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -16,7 +17,8 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 private const val ROUTE_LIST = "builds"
-private const val ARG_INDEX = "index"
+private const val ARG_SCRIPT = "script"
+private const val ARG_UUID = "buildUuid"
 private const val ROUTE_DETAIL = "build"
 
 /** The watch app: the build list, and a detail screen for the build that was tapped. */
@@ -32,28 +34,36 @@ fun WearApp() {
                 composable(ROUTE_LIST) {
                     BuildListScreen(
                         state = listState,
-                        onOpen = { index -> nav.navigate("$ROUTE_DETAIL/$index") },
+                        onOpen = { build ->
+                            nav.navigate("$ROUTE_DETAIL/${Uri.encode(build.scriptName)}/${Uri.encode(build.buildUuid)}")
+                        },
                         onRefresh = listViewModel::refresh,
                     )
                 }
                 composable(
-                    route = "$ROUTE_DETAIL/{$ARG_INDEX}",
-                    arguments = listOf(navArgument(ARG_INDEX) { type = NavType.IntType }),
+                    route = "$ROUTE_DETAIL/{$ARG_SCRIPT}/{$ARG_UUID}",
+                    arguments = listOf(
+                        navArgument(ARG_SCRIPT) { type = NavType.StringType },
+                        navArgument(ARG_UUID) { type = NavType.StringType },
+                    ),
                 ) { entry ->
-                    val index = entry.arguments?.getInt(ARG_INDEX) ?: -1
-                    // Looked up once: the list may reload behind this screen (after a retry) without moving it.
-                    val build = remember(index) {
-                        (listViewModel.state.value as? ListState.Content)?.builds?.getOrNull(index)
+                    val script = entry.arguments?.getString(ARG_SCRIPT).orEmpty()
+                    val uuid = entry.arguments?.getString(ARG_UUID).orEmpty()
+                    // Found by key, once: the list may reload or reorder behind this screen without changing it.
+                    val build = remember(script, uuid) {
+                        (listViewModel.state.value as? ListState.Content)?.builds?.findByKey(script, uuid)
                     }
                     if (build == null) {
                         LaunchedEffect(Unit) { nav.popBackStack() }
                         return@composable
                     }
                     val detailViewModel = koinViewModel<BuildDetailViewModel>(
-                        key = "$index",
+                        key = "$script/$uuid",
                         parameters = { parametersOf(build) },
                     )
                     val detail by detailViewModel.state.collectAsState()
+                    val isOrphaned by detailViewModel.isOrphaned.collectAsState()
+                    LaunchedEffect(isOrphaned) { if (isOrphaned) nav.popBackStack() }
                     LaunchedEffect(detail.action) {
                         if (detail.action == ActionState.Done) listViewModel.refresh()
                     }

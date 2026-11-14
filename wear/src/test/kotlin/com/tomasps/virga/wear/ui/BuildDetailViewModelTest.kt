@@ -24,9 +24,13 @@ class BuildDetailViewModelTest {
         fake: FakeWearBuilds,
         build: BuildSummary,
         session: WatchSessionState = CONNECTED,
-    ) = main.keep(BuildDetailViewModel::class.java) {
-        BuildDetailViewModel(MutableStateFlow(session), fake, build)
-    }
+    ) = detailVm(fake, build, MutableStateFlow(session))
+
+    private fun detailVm(
+        fake: FakeWearBuilds,
+        build: BuildSummary,
+        session: MutableStateFlow<WatchSessionState>,
+    ) = main.keep(BuildDetailViewModel::class.java) { BuildDetailViewModel(session, fake, build) }
 
     @Test
     fun runningBuildOffersCancelNotRetry() = main.runVmTest {
@@ -139,5 +143,48 @@ class BuildDetailViewModelTest {
         advanceUntilIdle()
         assertEquals(BuildStatus.STOPPED, vm.state.value.build.status)
         assertFalse(vm.state.value.canCancel)
+    }
+
+    @Test
+    fun confirmAfterAccountSwitchRefusesAndResetsToIdle() = main.runVmTest {
+        val fake = FakeWearBuilds()
+        val session = MutableStateFlow<WatchSessionState>(CONNECTED)
+        val vm = detailVm(fake, RUNNING, session)
+        advanceUntilIdle()
+        vm.cancel()
+        assertFalse(vm.isOrphaned.value)
+
+        session.value = WatchSessionState.Connected("acc-2", isDemo = false)
+        advanceUntilIdle()
+        assertTrue(vm.isOrphaned.value)
+        vm.confirm()
+        advanceUntilIdle()
+
+        assertEquals(ActionState.Idle, vm.state.value.action)
+        assertFalse(fake.calls.any { it.startsWith("cancel") })
+    }
+
+    @Test
+    fun confirmWhenSessionIsNoLongerConnectedResetsToIdle() = main.runVmTest {
+        val fake = FakeWearBuilds()
+        val session = MutableStateFlow<WatchSessionState>(CONNECTED)
+        val vm = detailVm(fake, RUNNING, session)
+        advanceUntilIdle()
+        vm.cancel()
+        session.value = WatchSessionState.Stale
+        vm.confirm()
+        advanceUntilIdle()
+        assertEquals(ActionState.Idle, vm.state.value.action)
+        assertFalse(fake.calls.any { it.startsWith("cancel") })
+    }
+
+    @Test
+    fun sameAccountReconnectDoesNotOrphanTheScreen() = main.runVmTest {
+        val session = MutableStateFlow<WatchSessionState>(CONNECTED)
+        val vm = detailVm(FakeWearBuilds(), RUNNING, session)
+        advanceUntilIdle()
+        session.value = WatchSessionState.Connected(ACCOUNT, isDemo = true)
+        advanceUntilIdle()
+        assertFalse(vm.isOrphaned.value)
     }
 }

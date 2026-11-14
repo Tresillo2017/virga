@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
-import androidx.wear.compose.foundation.lazy.itemsIndexed
+import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.ListHeader
@@ -28,7 +28,7 @@ private val StatusDotSize = 10.dp
 @Composable
 fun BuildListScreen(
     state: ListState,
-    onOpen: (Int) -> Unit,
+    onOpen: (BuildSummary) -> Unit,
     onRefresh: () -> Unit,
 ) {
     when (state) {
@@ -42,14 +42,14 @@ fun BuildListScreen(
 }
 
 @Composable
-private fun BuildRows(builds: List<BuildSummary>, onOpen: (Int) -> Unit) {
+private fun BuildRows(builds: List<BuildSummary>, onOpen: (BuildSummary) -> Unit) {
     val now = remember(builds) { Instant.now() }
     val listState = rememberScalingLazyListState()
     ScreenScaffold(scrollState = listState) { padding ->
         ScalingLazyColumn(state = listState, contentPadding = padding) {
             item { ListHeader { Text(stringResource(R.string.builds_title)) } }
-            itemsIndexed(builds) { index, build ->
-                BuildRow(build, tileFor(build, fetchedAt = now, now = now), onClick = { onOpen(index) })
+            items(builds, key = { it.routeKey() }) { build ->
+                BuildRow(build, tileFor(build, fetchedAt = now, now = now), onClick = { onOpen(build) })
             }
         }
     }
@@ -62,6 +62,6 @@ private fun BuildRow(build: BuildSummary, model: BuildTileModel, onClick: () -> 
         modifier = Modifier.fillMaxWidth(),
         icon = { Box(Modifier.size(StatusDotSize).background(model.state.color(), CircleShape)) },
         label = { Text(build.scriptName, maxLines = 1) },
-        secondaryLabel = { Text("${model.state.label()} · ${model.detail}", maxLines = 1) },
+        secondaryLabel = { Text(stringResource(R.string.status_with_age, model.state.label(), model.detail), maxLines = 1) },
     )
 }
