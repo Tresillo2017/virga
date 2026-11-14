@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
@@ -23,6 +24,7 @@ import com.tomasps.virga.core.navigation.HomeRoot
 import com.tomasps.virga.core.navigation.LocalNavigator
 import com.tomasps.virga.core.navigation.Navigator
 import com.tomasps.virga.core.navigation.PendingNavigation
+import com.tomasps.virga.core.navigation.RouteRegistry
 import com.tomasps.virga.core.navigation.SignIn
 import com.tomasps.virga.core.navigation.TopLevelRoute
 
@@ -35,9 +37,13 @@ import com.tomasps.virga.core.navigation.TopLevelRoute
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun ShellHost(sessionState: SessionState, pending: PendingNavigation) {
-    val registry = remember { buildRouteRegistry() }
-    val backStack = rememberNavBackStack(registry.savedStateConfiguration(), startKeyFor(sessionState))
+fun ShellHost(
+    sessionState: SessionState,
+    pending: PendingNavigation,
+    shell: ShellState = rememberShellState(sessionState),
+) {
+    val registry = shell.registry
+    val backStack = shell.backStack
     val uriHandler = LocalUriHandler.current
     val navigator = remember(backStack) { Navigator(backStack) { uriHandler.openUri(it) } }
     val entryProvider = remember(registry) { registry.buildEntryProvider() }
@@ -83,6 +89,20 @@ private fun navigationLayoutFor(current: NavKey?): NavigationSuiteType =
     } else {
         NavigationSuiteType.None
     }
+
+/** The route registry and the back stack it saves. */
+class ShellState(val registry: RouteRegistry, val backStack: NavBackStack<NavKey>)
+
+/**
+ * The shell's registry and back stack, saved with the instance state. Create it above anything that can take
+ * [ShellHost] out of composition (the app lock), so the stack survives: unlocking returns to the same screen.
+ */
+@Composable
+fun rememberShellState(sessionState: SessionState): ShellState {
+    val registry = remember { buildRouteRegistry() }
+    val backStack = rememberNavBackStack(registry.savedStateConfiguration(), startKeyFor(sessionState))
+    return remember(registry, backStack) { ShellState(registry, backStack) }
+}
 
 /** True when back should land on Home: signed in, on a single-key stack whose root is not Home. */
 internal fun shouldReturnToHome(sessionState: SessionState, current: NavKey?, stackSize: Int): Boolean =
