@@ -26,6 +26,19 @@ class HandoffCodecTest {
         assertFalse(payload.toString().contains("s3cret"))
     }
 
+    /** Phone and watch update independently: a newer phone may add fields an older watch does not know. */
+    @Test
+    fun unknownExtraKeysDecodeWithTheKnownFieldsIntact() {
+        val json = """{"version":1,"token":"s3cret","isDemo":false,
+            "accounts":[{"id":"a1","name":"Acme","plan":"pro"}],"selectedAccountId":"a1","sentAtMillis":42,
+            "futureFlag":true,"futureObject":{"nested":[1,2]}}"""
+
+        val decoded = HandoffCodec.decode(json.encodeToByteArray())
+
+        val expected = HandoffPayload(1, "s3cret", false, listOf(HandoffAccount("a1", "Acme")), "a1", 42L)
+        assertEquals(HandoffDecode.Ok(expected), decoded)
+    }
+
     @Test
     fun corruptBytesDecodeToInvalid() {
         assertEquals(HandoffDecode.Invalid, HandoffCodec.decode(byteArrayOf(1, 2, 3)))
