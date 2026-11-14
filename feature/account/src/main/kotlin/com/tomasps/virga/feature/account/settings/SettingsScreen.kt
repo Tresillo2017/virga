@@ -5,29 +5,30 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.RadioButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import com.tomasps.virga.core.navigation.LocalNavigator
-import com.tomasps.virga.core.ui.components.ListRow
-import com.tomasps.virga.core.ui.components.SectionCard
-import com.tomasps.virga.core.ui.components.SectionHeader
-import com.tomasps.virga.core.ui.dialogs.ConfirmDialog
-import com.tomasps.virga.core.ui.scaffold.ScreenScaffold
 import androidx.compose.ui.unit.dp
+import com.tomasps.virga.core.navigation.LocalNavigator
+import com.tomasps.virga.core.ui.scaffold.ScreenScaffold
+import com.tomasps.virga.feature.account.AccountAbout
 import com.tomasps.virga.feature.account.R
 import org.koin.compose.viewmodel.koinViewModel
 
-/** Page gutter. Each card sits inside it, and [SectionHeader] adds its own inset, so headers line up with row text. */
+/** Page gutter. Cards sit inside it; section headers add their own inset, so they line up with row text. */
 private val PAGE_GUTTER = 16.dp
 
+/** Route entry point: wires the ViewModel, the navigator and the device facts to the settings sections. */
 @Composable
 fun SettingsRoute(viewModel: SettingsViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsState()
     val navigator = LocalNavigator.current
+    val context = LocalContext.current
+    val facts = remember(context) { deviceFacts(context) }
     ScreenScaffold(
         title = stringResource(R.string.settings_title),
         onBack = { navigator.back() },
@@ -39,49 +40,14 @@ fun SettingsRoute(viewModel: SettingsViewModel = koinViewModel()) {
                 .padding(horizontal = PAGE_GUTTER)
                 .verticalScroll(rememberScrollState()),
         ) {
-            SectionHeader(title = stringResource(R.string.settings_appearance))
-            SectionCard(
-                rows = listOf(
-                    { ThemeOption(R.string.settings_theme_system, ThemeMode.System, state.themeMode, viewModel::onThemeSelected) },
-                    { ThemeOption(R.string.settings_theme_light, ThemeMode.Light, state.themeMode, viewModel::onThemeSelected) },
-                    { ThemeOption(R.string.settings_theme_dark, ThemeMode.Dark, state.themeMode, viewModel::onThemeSelected) },
-                ),
-            )
-            SectionHeader(title = stringResource(R.string.settings_session))
-            SectionCard(
-                rows = listOf {
-                    ListRow(
-                        headline = stringResource(R.string.settings_sign_out),
-                        supporting = stringResource(R.string.settings_sign_out_supporting),
-                        onClick = viewModel::onSignOutRequested,
-                    )
-                },
+            SettingsSections(
+                state = state,
+                facts = facts,
+                viewModel = viewModel,
+                onAboutClick = { navigator.navigate(AccountAbout) },
+                onNotificationsClick = { openNotificationSettings(context) },
             )
         }
     }
-    if (state.isSignOutConfirmVisible) {
-        ConfirmDialog(
-            title = stringResource(R.string.settings_sign_out_title),
-            message = stringResource(R.string.settings_sign_out_message),
-            onConfirm = viewModel::onSignOutConfirmed,
-            onDismiss = viewModel::onSignOutDismissed,
-            confirmLabel = stringResource(R.string.settings_sign_out_confirm),
-            dismissLabel = stringResource(R.string.settings_cancel),
-            destructive = true,
-        )
-    }
-}
-
-@Composable
-private fun ThemeOption(
-    labelRes: Int,
-    mode: ThemeMode,
-    selected: ThemeMode,
-    onSelected: (ThemeMode) -> Unit,
-) {
-    ListRow(
-        headline = stringResource(labelRes),
-        trailing = { RadioButton(selected = mode == selected, onClick = null) },
-        onClick = { onSelected(mode) },
-    )
+    SettingsDialogs(state = state, viewModel = viewModel)
 }

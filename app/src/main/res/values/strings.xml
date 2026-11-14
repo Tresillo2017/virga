@@ -21,4 +21,8 @@
     <string name="hub_storage_d1_supporting">SQL databases</string>
     <string name="hub_storage_kv">KV</string>
     <string name="hub_storage_kv_supporting">Key-value namespaces</string>
+
+    <string name="app_lock_title">Virga is locked</string>
+    <string name="app_lock_unlock">Unlock</string>
+    <string name="app_lock_prompt_title">Unlock Virga</string>
 </resources>

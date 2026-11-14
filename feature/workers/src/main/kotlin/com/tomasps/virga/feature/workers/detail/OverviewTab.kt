@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -57,7 +56,6 @@ import androidx.compose.runtime.setValue
 private const val RECENT_DEPLOYMENT_COUNT = 3
 private const val SHORT_ID_LENGTH = 8
 private const val ELAPSED_TICK_MS = 1_000L
-private val LIVE_CARD_CORNER = 14.dp
 private val LIVE_CARD_PADDING = 14.dp
 private val SECTION_GAP = 6.dp
 
@@ -235,9 +233,9 @@ private fun BuildingCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(LIVE_CARD_CORNER))
+            .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surfaceContainer)
-            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), RoundedCornerShape(LIVE_CARD_CORNER))
+            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), MaterialTheme.shapes.medium)
             .padding(LIVE_CARD_PADDING),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

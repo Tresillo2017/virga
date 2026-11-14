@@ -7,6 +7,7 @@ import com.tomasps.virga.core.auth.session.SessionState
 import com.tomasps.virga.core.common.builds.BuildSummary
 import com.tomasps.virga.core.common.builds.BuildsGateway
 import com.tomasps.virga.core.common.result.ApiResult
+import com.tomasps.virga.core.ui.components.DefaultTimeRangeSource
 import com.tomasps.virga.core.ui.components.TimeRange
 import com.tomasps.virga.core.ui.state.ApiErrorUiMapper
 import com.tomasps.virga.core.ui.state.UiState
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -45,6 +47,7 @@ class HomeViewModel(
     private val data: HomeDataRepository,
     private val builds: BuildsGateway,
     private val now: () -> Instant = Instant::now,
+    private val defaultRange: DefaultTimeRangeSource? = null,
 ) : ViewModel() {
 
     private val mutableState = MutableStateFlow(HomeUiState())
@@ -67,6 +70,9 @@ class HomeViewModel(
             session.state.collect { sessionState -> applyHeader(sessionState) }
         }
         viewModelScope.launch {
+            // The saved default is read before the first load, so the first analytics are for the range Home opens on.
+            val startRange = initialRange()
+            mutableState.update { it.copy(range = startRange) }
             session.state.map { (it as? SessionState.SignedIn)?.selectedAccountId }
                 .distinctUntilChanged()
                 .collectLatest { accountId -> if (accountId != null) loadAll(accountId, force = false) else clearAccount() }
@@ -75,6 +81,10 @@ class HomeViewModel(
             builds.watchedBuildIds().collect { ids -> mutableState.update { it.copy(watchedBuildIds = ids) } }
         }
     }
+
+    /** The first value of the saved default range when one is provided, otherwise the range the state starts with. */
+    private suspend fun initialRange(): TimeRange =
+        defaultRange?.defaultRange?.first() ?: mutableState.value.range
 
     fun onRangeSelected(range: TimeRange) {
         if (mutableState.value.range == range) return

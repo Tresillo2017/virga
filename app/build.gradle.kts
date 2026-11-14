@@ -6,9 +6,11 @@ dependencies {
     implementation(libs.androidx.core)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.biometric)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
@@ -17,6 +19,8 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.compose.viewmodel)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    // Robolectric unit tests launch the compose test activity from the merged debug manifest, so it must be declared there.
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     testImplementation(libs.koin.test)
 

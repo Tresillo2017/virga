@@ -7,19 +7,17 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScope
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.navigation3.runtime.NavKey
 import com.tomasps.virga.R
 import com.tomasps.virga.core.navigation.AccountRoot
 import com.tomasps.virga.core.navigation.ComputeRoot
 import com.tomasps.virga.core.navigation.DomainsRoot
 import com.tomasps.virga.core.navigation.HomeRoot
 import com.tomasps.virga.core.navigation.Navigator
-import androidx.navigation3.runtime.NavKey
 import com.tomasps.virga.core.navigation.StorageRoot
 import com.tomasps.virga.core.navigation.TopLevelRoute
 
@@ -33,18 +31,17 @@ private val TABS = listOf(
     TabSpec(AccountRoot, R.string.tab_account, Icons.Filled.AccountCircle),
 )
 
-/** Shown only while a top-level tab is the current destination. Deeper screens hide it. */
-@Composable
-fun VirgaBottomBar(current: NavKey?, navigator: Navigator) {
-    if (current !is TopLevelRoute) return
-    NavigationBar {
-        TABS.forEach { tab ->
-            NavigationBarItem(
-                selected = current == tab.key,
-                onClick = { if (current != tab.key) navigator.replaceAll(tab.key) },
-                icon = { Icon(tab.icon, contentDescription = null) },
-                label = { Text(stringResource(tab.label)) },
-            )
-        }
+/**
+ * The top-level tabs, as items of a navigation suite: a bottom bar on compact windows and a navigation rail on wider
+ * ones. Shown only by [ShellHost] while a top-level tab is the current destination.
+ */
+internal fun NavigationSuiteScope.virgaTopLevelItems(current: NavKey?, navigator: Navigator) {
+    TABS.forEach { tab ->
+        item(
+            selected = current == tab.key,
+            onClick = { if (current != tab.key) navigator.replaceAll(tab.key) },
+            icon = { Icon(tab.icon, contentDescription = null) },
+            label = { Text(stringResource(tab.label)) },
+        )
     }
 }

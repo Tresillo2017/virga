@@ -20,16 +20,11 @@ import com.tomasps.virga.core.ui.brand.VirgaLockup
 import com.tomasps.virga.core.ui.scaffold.ScreenScaffold
 import com.tomasps.virga.feature.account.R
 
-private const val UNKNOWN_VERSION = "?"
-
 @Composable
 fun AboutRoute() {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
-    val version = remember(context) {
-        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
-            .getOrNull() ?: UNKNOWN_VERSION
-    }
+    val version = remember(context) { appVersionName(context) }
     ScreenScaffold(
         title = stringResource(R.string.about_title),
         onBack = { navigator.back() },
