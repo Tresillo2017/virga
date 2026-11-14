@@ -21,6 +21,8 @@ import com.tomasps.virga.feature.builds.api.BuildsRepository
 import com.tomasps.virga.wear.builds.WearBuilds
 import com.tomasps.virga.wear.demo.WearDemoRoutes
 import com.tomasps.virga.wear.builds.WearBuildsSource
+import com.tomasps.virga.wear.surfaces.BuildSurfaceRefresher
+import com.tomasps.virga.wear.surfaces.LatestBuildCache
 import com.tomasps.virga.wear.ui.BuildDetailViewModel
 import com.tomasps.virga.wear.ui.BuildListViewModel
 import com.tomasps.virga.wear.session.StalenessGuardedCredentialProvider
@@ -30,6 +32,7 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import java.time.Instant
 
 /** Corrupt files are replaced with an empty store instead of throwing on every read. */
 private val Context.wearSecretDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -42,6 +45,12 @@ private val Context.wearPrefsDataStore: DataStore<Preferences> by preferencesDat
     corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
 )
 
+private val Context.wearSurfaceDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "virga_wear_surface",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
+
+private val SURFACE_STORE = named("wearSurfaceStore")
 private val VAULT_STORE = named("wearVaultStore")
 private val PREFS_STORE = named("wearPrefsStore")
 
@@ -57,6 +66,7 @@ val WATCH_SESSION_STATE = named("watchSessionState")
 val wearKoinModule = module {
     single<DataStore<Preferences>>(VAULT_STORE) { get<Context>().wearSecretDataStore }
     single<DataStore<Preferences>>(PREFS_STORE) { get<Context>().wearPrefsDataStore }
+    single<DataStore<Preferences>>(SURFACE_STORE) { get<Context>().wearSurfaceDataStore }
     single<SecretCipher> { AesGcmCipher { AndroidKeystoreKey.getOrCreate() } }
     single { CredentialVault(get(VAULT_STORE), get(), get()) }
     single { WatchSessionPrefs(get(PREFS_STORE)) }
@@ -79,6 +89,12 @@ val wearKoinModule = module {
     } bind WearBuilds::class
 }
 
+/** What the tile and complication read: the last good build (no token) and the refresh that feeds both. */
+val wearSurfaceKoinModule = module {
+    single { LatestBuildCache(get(SURFACE_STORE)) }
+    single { BuildSurfaceRefresher(get(), get(WATCH_SESSION_STATE), get(), Instant::now) }
+}
+
 /** The screens' ViewModels. They read the session through [WATCH_SESSION_STATE] and the data through [WearBuilds]. */
 val wearUiKoinModule = module {
     viewModel { BuildListViewModel(get(WATCH_SESSION_STATE), get()) }
@@ -91,4 +107,5 @@ val wearKoinModules = listOf(
     coreNetworkKoinModule,
     wearKoinModule,
     wearUiKoinModule,
+    wearSurfaceKoinModule,
 )

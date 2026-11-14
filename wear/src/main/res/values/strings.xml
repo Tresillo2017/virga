@@ -29,4 +29,7 @@
     <string name="action_running">Working</string>
     <string name="action_done">Done</string>
     <string name="action_ok">OK</string>
+
+    <string name="tile_label">Latest build</string>
+    <string name="complication_label">Latest build</string>
 </resources>

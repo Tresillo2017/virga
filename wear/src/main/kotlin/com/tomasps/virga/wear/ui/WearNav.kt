@@ -5,7 +5,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import com.tomasps.virga.core.common.builds.BuildSummary
@@ -31,13 +34,14 @@ internal fun detailRoute(build: BuildSummary): String? {
 
 /** The watch app: the build list, and a detail screen for the build that was tapped. */
 @Composable
-fun WearApp() {
+fun WearApp(startRoute: String? = null) {
     VirgaWearTheme {
         AppScaffold {
             val nav = rememberSwipeDismissableNavController()
             val listViewModel = koinViewModel<BuildListViewModel>()
             val listState by listViewModel.state.collectAsState()
             LeaveDetailWhenSessionEnds(nav, listState)
+            OpenStartRoute(nav, startRoute, listState)
             SwipeDismissableNavHost(navController = nav, startDestination = ROUTE_LIST) {
                 composable(ROUTE_LIST) {
                     BuildListScreen(
@@ -83,6 +87,20 @@ fun WearApp() {
                 }
             }
         }
+    }
+}
+
+/**
+ * Opens the build a tile tap asked for, once, after the list has loaded: the detail screen finds its build in the
+ * list. If the list cannot supply content (not connected, empty, error) the request is dropped and the list shows.
+ */
+@Composable
+private fun OpenStartRoute(nav: NavHostController, startRoute: String?, listState: ListState) {
+    var isHandled by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(listState) {
+        if (startRoute == null || isHandled || listState == ListState.Loading) return@LaunchedEffect
+        isHandled = true
+        if (listState is ListState.Content) nav.navigate(startRoute)
     }
 }
 
