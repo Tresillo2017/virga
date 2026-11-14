@@ -137,7 +137,7 @@ class BuildsScriptedFlowTest {
         compose.waitForDialogText("Start this build?")
         compose.clickInDialog("Start")
 
-        compose.waitUntil(FLOW_WAIT_TIMEOUT_MS) { ShadowToast.getTextOfLatestToast() == "Could not start the build. Try again." }
+        flow.waitUntil { ShadowToast.getTextOfLatestToast() == "Could not start the build. Try again." }
     }
 
     @Test

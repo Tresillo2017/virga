@@ -5,7 +5,6 @@ import com.tomasps.virga.core.common.result.ApiError
 import com.tomasps.virga.core.common.result.ApiResult
 import com.tomasps.virga.core.navigation.KvNamespace
 import com.tomasps.virga.core.testing.DemoFlow
-import com.tomasps.virga.core.testing.FLOW_WAIT_TIMEOUT_MS
 import com.tomasps.virga.core.testing.FeatureUnderTest
 import com.tomasps.virga.feature.kv.data.KvMetrics
 import com.tomasps.virga.feature.kv.data.KvMetricsSource
@@ -82,7 +81,7 @@ class KvMetricsFlowTest {
 
         demo.clickText("Retry")
 
-        compose.waitUntil(FLOW_WAIT_TIMEOUT_MS) { calls > before }
+        demo.waitUntil { calls > before }
         assertEquals(before + 1, calls)
     }
 }
