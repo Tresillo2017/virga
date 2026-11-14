@@ -114,11 +114,15 @@ class SummarySourceTest {
 
     @Test
     fun malformedDataMapsToFailedDecode() = runTest {
-        val api = apiAnswering { DemoReply.graphQl(Json.parseToJsonElement("{}")) }
+        val bodies = listOf("{}", """{"viewer":{"accounts":[]}}""", """{"viewer":{"accounts":[{"totals":[{}]}]}}""")
 
-        val result = source(api).last24h("acc", now)
+        bodies.forEach { body ->
+            val api = apiAnswering { DemoReply.graphQl(Json.parseToJsonElement(body)) }
 
-        assertTrue(result is SummaryResult.Failed && result.error is ApiError.Decode)
+            val result = source(api).last24h("acc", now)
+
+            assertTrue(result is SummaryResult.Failed && result.error is ApiError.Decode)
+        }
     }
 
     @Test

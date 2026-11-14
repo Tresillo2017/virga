@@ -21,15 +21,28 @@ class SummaryParserTest {
     }
 
     @Test
-    fun emptyResultIsZeroNotFailure() {
+    fun noTrafficIsARealZero() {
         assertEquals(SummaryData(0, 0), parseSummary(account("[]")))
-        assertEquals(SummaryData(0, 0), parseSummary(data("""{"viewer":{"accounts":[]}}""")))
+        assertEquals(SummaryData(0, 0), parseSummary(account("""[{"sum":{"requests":0,"errors":0}}]""")))
     }
 
     @Test
     fun missingViewerIsMalformedNotZero() {
         assertNull(parseSummary(null))
         assertNull(parseSummary(data("{}")))
+    }
+
+    @Test
+    fun missingOrEmptyAccountsIsMalformedNotZero() {
+        assertNull(parseSummary(data("""{"viewer":{}}""")))
+        assertNull(parseSummary(data("""{"viewer":{"accounts":[]}}""")))
+        assertNull(parseSummary(data("""{"viewer":{"accounts":[null]}}""")))
+    }
+
+    @Test
+    fun missingTotalsIsMalformedNotZero() {
+        assertNull(parseSummary(data("""{"viewer":{"accounts":[{}]}}""")))
+        assertNull(parseSummary(data("""{"viewer":{"accounts":[{"totals":null}]}}""")))
     }
 
     @Test
@@ -40,9 +53,23 @@ class SummaryParserTest {
     }
 
     @Test
-    fun oddlyTypedOrMissingFieldsReadAsZero() {
-        val parsed = parseSummary(account("""[{"sum":{"requests":"many"}},{"nothing":true}]"""))
+    fun missingOrNonObjectSumIsMalformed() {
+        assertNull(parseSummary(account("""[{"nothing":true}]""")))
+        assertNull(parseSummary(account("""[{"sum":null}]""")))
+        assertNull(parseSummary(account("""[{"sum":[1]}]""")))
+    }
 
-        assertEquals(SummaryData(0, 0), parsed)
+    @Test
+    fun nonNumericOrNonIntegerOrMissingCountsAreMalformed() {
+        assertNull(parseSummary(account("""[{"sum":{"requests":"many","errors":1}}]""")))
+        assertNull(parseSummary(account("""[{"sum":{"requests":null,"errors":1}}]""")))
+        assertNull(parseSummary(account("""[{"sum":{"requests":1.5,"errors":1}}]""")))
+        assertNull(parseSummary(account("""[{"sum":{"requests":5}}]""")))
+        assertNull(parseSummary(account("""[{"sum":{"requests":10,"errors":1}},{"sum":{"errors":1}}]""")))
+    }
+
+    @Test
+    fun numericStringsAreAcceptedLikeHome() {
+        assertEquals(SummaryData(7, 2), parseSummary(account("""[{"sum":{"requests":"7","errors":2}}]""")))
     }
 }

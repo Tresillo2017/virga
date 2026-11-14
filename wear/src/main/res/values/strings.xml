@@ -33,10 +33,10 @@
     <string name="tile_label">Latest build</string>
     <string name="complication_label">Latest build</string>
 
-    <string name="summary_tile_label">Last 24h</string>
+    <string name="summary_tile_label">Worker 24h</string>
     <string name="summary_title">Last 24h</string>
-    <string name="summary_requests">Requests</string>
-    <string name="summary_errors">Errors</string>
+    <string name="summary_requests">Worker requests</string>
+    <string name="summary_errors">Worker errors</string>
     <string name="summary_open_phone">Open phone app</string>
     <string name="summary_reconnect">Reconnect from phone</string>
     <string name="summary_no_access">Token lacks analytics access</string>

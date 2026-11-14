@@ -22,7 +22,7 @@ internal suspend fun BuildSurfaceRefresher.refreshOrNull(): SurfaceData? = try {
     null
 }
 
-internal const val OPEN_APP_CLICK_ID = "open_build"
+internal const val OPEN_APP_CLICK_ID = "open_app"
 
 /** A text line for a tile layout. */
 internal fun tileText(value: String, sizeSp: Float, color: Int): LayoutElementBuilders.LayoutElement =

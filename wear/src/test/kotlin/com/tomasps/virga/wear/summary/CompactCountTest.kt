@@ -22,10 +22,20 @@ class CompactCountTest {
     }
 
     @Test
+    fun digitsAreTruncatedNotRounded() {
+        assertEquals("1k", compactCount(1_049))
+        assertEquals("1.1k", compactCount(1_100))
+        assertEquals("1k", compactCount(1_050))
+        assertEquals("1M", compactCount(1_000_000))
+        assertEquals("999.9k", compactCount(999_999))
+    }
+
+    @Test
     fun roundingNeverPromotesPastTheUnit() {
         assertEquals("999.9k", compactCount(999_999))
     }
 
+    /** By design: a negative count is not something to alarm a wearer with, so it reads as an ordinary 0. */
     @Test
     fun negativeValuesShowZero() {
         assertEquals("0", compactCount(-5))

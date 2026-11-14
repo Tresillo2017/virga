@@ -100,6 +100,35 @@ class SummaryRefresherTest {
     }
 
     @Test
+    fun malformedOkResponsesKeepTheCachedNumbersAsStaleAndDoNotOverwriteTheCache() = runTest {
+        cache.save(ACCOUNT, false, cachedData, t0)
+        val bodies = listOf(
+            """{"viewer":{"accounts":[]}}""",
+            """{"viewer":{"accounts":[{}]}}""",
+            """{"viewer":{"accounts":[{"totals":[{"sum":null}]}]}}""",
+            """{"viewer":{"accounts":[{"totals":[{"sum":{"requests":"x","errors":null}}]}]}}""",
+        )
+
+        bodies.forEach { body ->
+            val surface = refresher(api { DemoReply.graphQl(Json.parseToJsonElement(body)) }).refresh()
+
+            assertEquals(SummarySurface(cachedData, t0, SummaryStatus.Stale), surface)
+            assertEquals(cachedData, cache.load()!!.data)
+        }
+    }
+
+    @Test
+    fun genuineNoTrafficResponseIsFreshZeroAndReplacesTheCache() = runTest {
+        cache.save(ACCOUNT, false, cachedData, t0)
+        val noTraffic = DemoReply.graphQl(Json.parseToJsonElement("""{"viewer":{"accounts":[{"totals":[]}]}}"""))
+
+        val surface = refresher(api { noTraffic }).refresh()
+
+        assertEquals(SummarySurface(SummaryData(0, 0), t1, SummaryStatus.Fresh), surface)
+        assertEquals(SummaryData(0, 0), cache.load()!!.data)
+    }
+
+    @Test
     fun rateLimitedReturnsTheLastValueAsStaleWithItsFetchTimeAndKeepsTheCache() = runTest {
         cache.save(ACCOUNT, false, cachedData, t0)
 
