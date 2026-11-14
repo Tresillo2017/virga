@@ -145,6 +145,17 @@ class WearFlowTest {
     }
 
     @Test
+    fun hostileWorkerNameRoundTripsThroughTheRoute() {
+        val name = "we ird/na?me%2F{x}\u00e9"
+        val hostile = build().copy(scriptName = name)
+        scripted = FakeWearBuilds(recent = ApiResult.Success(listOf(hostile)))
+        showApp()
+        click(name)
+        // The detail header is plain text with the exact name; the list row it came from is a button.
+        compose.waitUntilAtLeastOneExists(hasText(name) and !hasClickAction(), WAIT_MS)
+    }
+
+    @Test
     fun serverErrorShowsSomethingWentWrongNotBlank() {
         scripted = FakeWearBuilds(recent = failure(ApiError.Server(503)))
         showApp()

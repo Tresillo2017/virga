@@ -10,6 +10,7 @@ import com.tomasps.virga.wear.builds.WearBuilds
 import com.tomasps.virga.wear.session.WatchSessionState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.StateFlow
@@ -51,8 +52,12 @@ class BuildDetailViewModel(
     private val mutableState = MutableStateFlow(stateFor(initial, retryPlan = null))
     val state: StateFlow<DetailState> = mutableState.asStateFlow()
 
-    /** True once the session is no longer connected to the pinned account, so the screen should close. */
+    /**
+     * True once the session is Stale, NotConnected or connected to a different account, so the screen should close.
+     * Restoring is transient and is skipped: the screen keeps waiting.
+     */
     val isOrphaned: StateFlow<Boolean> = session
+        .filter { it != WatchSessionState.Restoring }
         .map { it.connectedAccountId() != pinnedAccountId || pinnedAccountId == null }
         .stateIn(viewModelScope, SharingStarted.Eagerly, pinnedAccountId == null)
 

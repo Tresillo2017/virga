@@ -82,6 +82,37 @@ private fun summary(branch: String? = "main", commit: String? = "abc", tag: Stri
 class WearBuildsSourceTest {
 
     @Test
+    fun `recent lists a build once when the same Worker appears twice`() = runBlocking {
+        val api = mockCloudflareApi {
+            get(SCRIPTS) { DemoReply.ok(scripts("a", "a", "b")) }
+            get(BUILDS) { request ->
+                val worker = request.pathParams["workerTag"]
+                DemoReply.ok(json("[${buildJson("$worker-1", "2026-11-11T10:00:00Z")}]"))
+            }
+        }
+
+        val list = (source(api).recent(ACCOUNT) as ApiResult.Success).value
+
+        assertEquals(listOf("tag-a-1", "tag-b-1"), list.map { it.buildUuid }.sorted())
+        assertEquals(list.size, list.map { it.scriptName to it.buildUuid }.toSet().size)
+    }
+
+    @Test
+    fun `recent drops a build with a blank uuid`() = runBlocking {
+        val api = mockCloudflareApi {
+            get(SCRIPTS) { DemoReply.ok(scripts("a")) }
+            get(BUILDS) {
+                DemoReply.ok(json("[${buildJson("", "2026-11-11T10:00:00Z")},${buildJson("ok", "2026-11-11T09:00:00Z")}]"))
+            }
+        }
+
+        val list = (source(api).recent(ACCOUNT) as ApiResult.Success).value
+
+        assertEquals(listOf("ok"), list.map { it.buildUuid })
+    }
+
+
+    @Test
     fun `recent keeps only the newest ten of fifteen`() = runBlocking {
         val api = mockCloudflareApi {
             get(SCRIPTS) { DemoReply.ok(scripts("a", "b", "c")) }

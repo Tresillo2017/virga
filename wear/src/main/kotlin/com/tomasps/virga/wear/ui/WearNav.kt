@@ -8,8 +8,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
+import com.tomasps.virga.core.common.builds.BuildSummary
 import androidx.navigation.navArgument
 import androidx.wear.compose.material3.AppScaffold
+import com.tomasps.virga.wear.builds.findByKey
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
@@ -20,6 +22,12 @@ private const val ROUTE_LIST = "builds"
 private const val ARG_SCRIPT = "script"
 private const val ARG_UUID = "buildUuid"
 private const val ROUTE_DETAIL = "build"
+
+/** The detail route for [build], or null when a part is blank: an empty segment would not match any route. */
+internal fun detailRoute(build: BuildSummary): String? {
+    if (build.scriptName.isBlank() || build.buildUuid.isBlank()) return null
+    return "$ROUTE_DETAIL/${Uri.encode(build.scriptName)}/${Uri.encode(build.buildUuid)}"
+}
 
 /** The watch app: the build list, and a detail screen for the build that was tapped. */
 @Composable
@@ -34,9 +42,7 @@ fun WearApp() {
                 composable(ROUTE_LIST) {
                     BuildListScreen(
                         state = listState,
-                        onOpen = { build ->
-                            nav.navigate("$ROUTE_DETAIL/${Uri.encode(build.scriptName)}/${Uri.encode(build.buildUuid)}")
-                        },
+                        onOpen = { build -> detailRoute(build)?.let(nav::navigate) },
                         onRefresh = listViewModel::refresh,
                     )
                 }

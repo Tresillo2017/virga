@@ -52,7 +52,10 @@ class WearBuildsSource(
                 .map { worker -> async { permits.withPermit { buildsOf(op, accountId, worker) } } }
                 .awaitAll()
         }.flatten()
-        return ApiResult.Success(builds.sortedByDescending { it.createdOn }.take(MAX_LISTED))
+        // A build without a uuid or Worker name cannot be opened. The same build can arrive twice (a Worker listed twice):
+        // keep the newest copy, since the screens key rows and routes by routeKey().
+        val actionable = builds.filter { it.scriptName.isNotBlank() && it.buildUuid.isNotBlank() }
+        return ApiResult.Success(actionable.sortedByDescending { it.createdOn }.distinctBy { it.routeKey() }.take(MAX_LISTED))
     }
 
     override suspend fun detail(accountId: String, build: BuildSummary): ApiResult<BuildSummary> =

@@ -187,4 +187,31 @@ class BuildDetailViewModelTest {
         advanceUntilIdle()
         assertFalse(vm.isOrphaned.value)
     }
+
+    @Test
+    fun transientRestoringDoesNotOrphanButADifferentAccountDoes() = main.runVmTest {
+        val session = MutableStateFlow<WatchSessionState>(CONNECTED)
+        val vm = detailVm(FakeWearBuilds(), RUNNING, session)
+        advanceUntilIdle()
+        session.value = WatchSessionState.Restoring
+        advanceUntilIdle()
+        assertFalse(vm.isOrphaned.value)
+        session.value = CONNECTED
+        advanceUntilIdle()
+        assertFalse(vm.isOrphaned.value)
+        session.value = WatchSessionState.Restoring
+        session.value = WatchSessionState.Connected("acc-2", isDemo = false)
+        advanceUntilIdle()
+        assertTrue(vm.isOrphaned.value)
+    }
+
+    @Test
+    fun staleOrNotConnectedOrphans() = main.runVmTest {
+        val session = MutableStateFlow<WatchSessionState>(CONNECTED)
+        val vm = detailVm(FakeWearBuilds(), RUNNING, session)
+        advanceUntilIdle()
+        session.value = WatchSessionState.Stale
+        advanceUntilIdle()
+        assertTrue(vm.isOrphaned.value)
+    }
 }

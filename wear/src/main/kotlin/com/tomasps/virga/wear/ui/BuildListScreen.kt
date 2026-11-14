@@ -19,6 +19,7 @@ import androidx.wear.compose.material3.Text
 import androidx.compose.foundation.layout.Box
 import com.tomasps.virga.R
 import com.tomasps.virga.core.common.builds.BuildSummary
+import com.tomasps.virga.wear.builds.routeKey
 import com.tomasps.virga.wear.present.BuildTileModel
 import com.tomasps.virga.wear.present.tileFor
 import java.time.Instant
