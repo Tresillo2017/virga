@@ -7,7 +7,7 @@ Everything the owner still has to do before a Play Store release. The repository
 - Create an upload key in a password manager or hardware-backed store. Never commit it, and never put it in `gradle.properties`.
 - Add a release `signingConfig` in a local-only file (for example `keystore.properties` in `.gitignore`) or enroll in Play App Signing and upload with an upload key.
 - Confirm the signed APK or AAB installs over a debug build only if the keys match. Expect a fresh install otherwise.
-- Keep the R8 keep rules in `app/proguard-rules.pro` and re-run the minified smoke test after any dependency upgrade.
+- Keep the R8 keep rules in `app/proguard-rules.pro` and `wear/proguard-rules.pro` and re-run the minified smoke test after any dependency upgrade.
 
 ## 2. Watch build service: Play Console declaration (Blocker)
 
@@ -101,13 +101,19 @@ Owner decisions to confirm:
 - The summary tile labels are "Worker requests" and "Worker errors" (Workers invocations and errors, not zone HTTP traffic).
 - Wear OS 4 (API 33) is the minimum.
 
+Owner actions before the watch app ships:
+
+- **Blocking: privacy copy and Data safety.** The phone sign-in text (`feature/account/src/main/res/values/strings.xml`) says the token "is sent only to api.cloudflare.com". With a watch paired it is also sent to the watch over the Wear Data Layer. Reword that copy, and answer the Play Data safety form for the watch handoff (the token moves phone to watch on the user's own devices, is stored encrypted on both, and is not sent to the developer or third parties). The README and architecture text are already corrected.
+- **Distinct versionCode.** `wear/build.gradle.kts` reads the same `virgaVersionCode` property as `:app`, and `.github/workflows/release.yml` passes one `VERSION_CODE` to `assembleRelease bundleRelease`, so the phone and watch builds get identical codes. Decide how the watch gets its own code.
+- **Archive watch outputs.** The release workflow archives only `app/` outputs, so the watch bundle and its R8 `mapping.txt` are never kept. Without the mapping, watch crash traces cannot be read.
+
 Manual checks:
 
 - **Pairing and handoff:** pair a real watch (or a Wear emulator paired with a phone emulator in Android Studio) with the phone, sign in on the phone, and confirm the watch connects without typing anything. Repeat with the demo account and confirm the watch is in demo mode. Change the selected account on the phone and confirm the watch follows.
 - **Sign-out with the watch offline:** put the watch in airplane mode, sign out on the phone, then reconnect. Confirm the watch drops the token once it reconnects. Separately, keep it offline past the 24-hour window and confirm it shows "Reconnect from phone" and makes no API calls. Virga does not revoke the Cloudflare token on sign-out; confirm the About or listing text does not claim it does.
 - **401:** revoke the token in the Cloudflare dashboard and confirm the watch wipes its token and asks to reconnect.
 - **Tile and complication on a physical watch,** round and square: the build tile, the build complication (short and long text), and the summary tile. Check text fit, the ambient state, and refresh after a build finishes.
-- **A build watched on the phone** is bridged to the watch as a notification. Confirm it appears once and is dismissed when the phone's watch ends.
+- **Phone notifications on the watch:** Virga relies on Wear OS's default notification bridging and does not guarantee it. Watch a build on the phone with the watch connected and confirm the phone's build-finished notification arrives on the watch. Record whether the in-progress (ongoing, Live Update) notification appears at all; Wear OS may not bridge ongoing notifications. Do not assume either result.
 - **A build watched from the watch** alerts once when it finishes and is not mirrored to the phone. Confirm the 2-hour stop notification.
 - **POST_NOTIFICATIONS denied on the watch:** confirm Watch this build explains or fails cleanly, and the app does not crash.
 - **Summary tile against a real account,** including a token without analytics scope (expect "Token lacks analytics access") and an account with no Workers traffic (expect zero or "No data", not a stale number).

@@ -56,8 +56,10 @@ A small watch app (`:wear`, Wear OS 4 / API 33 or newer) for checking and acting
 - A build tile and a complication showing the latest Workers Build.
 - A 24h tile with Worker requests and Worker errors. These are Workers invocations and Workers errors from the account GraphQL analytics, not zone HTTP traffic. It needs a token with analytics access; without it the tile says so.
 - A build list and build detail. **Cancel** and **Retry** each sit behind a confirm step. Retry is hidden unless a safe target and trigger can be chosen: the target is the build's commit, else its branch, and the trigger is the one whose branches include the build's branch, else the only trigger.
-- **Watch this build** on the watch alerts when a build finishes (a foreground service polls only while a watched build is active; it stops at the end of the build or after 2 hours with a "Stopped watching" notification). Builds you watch on the phone are bridged to the watch by Wear OS's notification bridging; the watch does not poll those. A build watched on the watch is not mirrored to the phone.
+- **Watch this build** on the watch alerts when a build finishes (a foreground service polls only while a watched build is active; it stops at the end of the build or after 2 hours with a "Stopped watching" notification). The watch does not poll builds watched on the phone. Virga relies on Wear OS's default bridging of the phone's notifications for those and does not guarantee it: it works only while the phone is connected and depends on the user's notification settings, and Wear OS may not bridge the phone's ongoing in-progress notification, so only the plain build-finished notification may reach the watch. A build watched on the watch is not mirrored to the phone.
 - The demo account works: choosing **Explore the demo** on the phone hands demo mode to the watch.
+
+**Permissions (watch):** `INTERNET`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC` and `POST_NOTIFICATIONS`.
 
 **What it does not do:** DNS, Pages, R2, D1, KV, the SQL console, logs, settings, secrets, account switching, typing or pasting a token on the watch, and standalone sign-in.
 
@@ -88,7 +90,7 @@ Demo data is invented. Hostnames such as `example.com` and `lantern-docs` are pl
 
 - Sign-in uses a Cloudflare API token that you paste. Virga checks it on entry (`/user/tokens/verify`), then reads your accounts.
 - The token is encrypted with AES-GCM using a non-exportable Android Keystore key. The ciphertext is stored in DataStore. The token is never shown again after entry.
-- The token is sent only in the `Authorization` header, and only to `https://api.cloudflare.com`. It is never logged, exported or sent anywhere else.
+- The token is sent only in the `Authorization` header, and only to `https://api.cloudflare.com`. It is stored encrypted on the phone and is never logged or exported. Only if you pair a watch, it is also sent to that paired watch over the Wear Data Layer (Google Play services), where it is stored encrypted with the watch's own Keystore key.
 - No analytics, crash reporting or advertising SDKs. Virga has no server of its own.
 - Backups are off (`allowBackup="false"`), and backup and device-transfer rules exclude the credential store.
 - Permissions: `INTERNET`; `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC` and `POST_PROMOTED_NOTIFICATIONS` for the Watch build service and its Live Update.
@@ -98,7 +100,7 @@ Demo data is invented. Hostnames such as `example.com` and `lantern-docs` are pl
 ```
 :app                    MainActivity, splash, navigation host, bottom bar, Koin start, demo wiring, wearsync (publishes the credential to the watch)
 :wear                   Wear OS app: tiles, complication, builds, alerts, handoff receiver (see Wear OS companion)
-:core:wearsync          Data Layer handoff contract: payload, codec, staleness policy (pure Kotlin)
+:core:wearsync          Data Layer handoff contract: payload, codec, staleness policy (no Android APIs in its code)
 :core:common            Result and error types, dispatchers, formatters
 :core:network           CloudflareApi (REST envelope), GraphQL client, pagination, rate limiting, demo engine
 :core:auth              credential vault, session, account selection
@@ -116,7 +118,7 @@ Demo data is invented. Hostnames such as `example.com` and `lantern-docs` are pl
 :feature:kv             namespaces, keys, values, bulk operations, metrics
 ```
 
-Feature modules depend only on `core:*`. `:wear` depends on `:core:common`, `:core:network`, `:core:auth`, `:core:wearsync` and `:feature:buildsdata` only. Cross-feature links go through route keys in `core:navigation`. See `docs/architecture.md` and `docs/feature-module-guide.md`.
+Feature modules depend only on `core:*`, with one exception: `:feature:builds` may depend on `:feature:buildsdata`, a data-only module with no UI. `:wear` depends on `:core:common`, `:core:network`, `:core:auth`, `:core:wearsync` and `:feature:buildsdata` only. Cross-feature links go through route keys in `core:navigation`. See `docs/architecture.md` and `docs/feature-module-guide.md`.
 
 ## Testing
 
