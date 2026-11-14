@@ -210,7 +210,7 @@ jobs:
         run: |
           apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/apksigner"
           digest_of() {
-            "$apksigner" verify --print-certs "$1" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1
+            "$apksigner" verify --print-certs "$1" | sed -nE 's/^(Signer #1|V[0-9.]+ Signer:?) certificate SHA-256 digest: //p' | head -n 1
           }
           "$apksigner" verify --verbose app/build/outputs/apk/release/*.apk
           "$apksigner" verify --verbose wear/build/outputs/apk/release/*.apk
