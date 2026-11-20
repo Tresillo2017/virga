@@ -22,7 +22,7 @@ wearProtolayout = "1.4.2"
 wearComplications = "1.3.0"
 turbine = "1.2.1"
 junit = "4.13.2"
-robolectric = "4.17"
+robolectric = "4.18"
 espresso = "3.7.0"
 
 [libraries]
