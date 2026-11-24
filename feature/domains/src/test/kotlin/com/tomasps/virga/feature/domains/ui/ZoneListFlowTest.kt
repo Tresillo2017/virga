@@ -108,6 +108,7 @@ class ZoneListFlowTest {
 
         flow.typeIntoField(ADD_FIELD_LABEL, "flow-added.example")
         flow.clickText("Add")
+        flow.waitUntil { flow.history.any { it is ZoneDetail } }
 
         val opened = flow.history.filterIsInstance<ZoneDetail>().single()
         assertTrue(opened.zoneId.isNotEmpty())
@@ -120,6 +121,7 @@ class ZoneListFlowTest {
         compose.tapDescription("Add a domain")
         flow.typeIntoField(ADD_FIELD_LABEL, "flow-reset.example")
         flow.clickText("Add")
+        flow.waitUntil { flow.history.any { it is ZoneDetail } }
         flow.navigator.back()
         compose.waitForIdle()
 
