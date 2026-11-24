@@ -8,6 +8,23 @@ Virga is not affiliated with, endorsed by, or sponsored by Cloudflare, Inc. Clou
 
 Beta. Download the latest APK from [Releases](https://github.com/Tresillo2017/virga/releases); pre-releases are signed with the same key as stable releases, so later versions install as updates. Tested on the JVM (see Testing) and on an Android 17 emulator with the demo account. Not yet tested on Android 9 or Android 16 devices, or against a production account with a least-privilege token. The Wear OS companion (below) was run once on a Wear OS 4 round emulator with a simulated demo handoff: the debug and minified release builds start, and the build list, build detail, Cancel and Retry (each behind a confirm step) and the watch alert and foreground service work. It has not been run on a physical watch, the credential handoff has not been tried over a real Data Layer between two devices, the tiles and complication have not been added to a watch face, and the 24h summary tile query has not been run against the live Cloudflare API. Bug reports are welcome. See `docs/release-checklist.md` for what is left before a Play Store release.
 
+## Screenshots
+
+Captured on an Android 17 emulator with the built-in demo account, so all data is sample data. More captures are listed in [`docs/screenshots`](docs/screenshots/README.md).
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/features/home-dark.png" width="160" alt="Home analytics"><br><sub>Home analytics</sub></td>
+    <td align="center"><img src="docs/screenshots/features/worker-overview-dark.png" width="160" alt="Worker overview"><br><sub>Worker overview</sub></td>
+    <td align="center"><img src="docs/screenshots/features/build-history-dark.png" width="160" alt="Workers Builds"><br><sub>Workers Builds</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/features/dns-records-dark.png" width="160" alt="DNS records"><br><sub>DNS records</sub></td>
+    <td align="center"><img src="docs/screenshots/features/r2-objects-dark.png" width="160" alt="R2 object browser"><br><sub>R2 object browser</sub></td>
+    <td align="center"><img src="docs/screenshots/features/d1-console-select-dark.png" width="160" alt="D1 SQL console"><br><sub>D1 SQL console</sub></td>
+  </tr>
+</table>
+
 ## Features by product
 
 | Area | What you can do |
