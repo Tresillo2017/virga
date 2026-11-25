@@ -46,14 +46,14 @@ internal fun ObjectList(
 ) {
     val unknownType = stringResource(R.string.r2_unknown_content_type)
     LazyColumn(modifier = Modifier.fillMaxWidth()) {
-        items(listing.folders, key = { "folder:$it" }) { folder ->
+        items(listing.folders, key = { "folder:$it" }, contentType = { "folder" }) { folder ->
             ListRow(
                 headline = folder.removePrefix(prefix).trimEnd('/'),
                 leading = { Icon(Icons.Filled.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 onClick = { onOpenFolder(folder) },
             )
         }
-        items(listing.objects, key = { "object:${it.key}" }) { item ->
+        items(listing.objects, key = { "object:${it.key}" }, contentType = { "object" }) { item ->
             ListRow(
                 headline = item.key.removePrefix(prefix),
                 supporting = stringResource(

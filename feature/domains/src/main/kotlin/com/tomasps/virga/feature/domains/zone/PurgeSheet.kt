@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -51,8 +52,8 @@ fun PurgeMode.toRequest(text: String): PurgeRequest {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PurgeSheet(onDismiss: () -> Unit, onSubmit: (PurgeRequest) -> Unit) {
-    var mode by remember { mutableStateOf(PurgeMode.EVERYTHING) }
-    var text by remember { mutableStateOf("") }
+    var mode by rememberSaveable { mutableStateOf(PurgeMode.EVERYTHING) }
+    var text by rememberSaveable { mutableStateOf("") }
     var problem by remember { mutableStateOf<PurgeProblem?>(null) }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
