@@ -90,7 +90,7 @@ internal fun AddDomainSheet(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
 @Composable
 internal fun AddSecretSheet(onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
     var name by rememberSaveable { mutableStateOf("") }
-    var value by rememberSaveable { mutableStateOf("") }
+    var value by remember { mutableStateOf("") } // a secret: never saved to instance state
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
