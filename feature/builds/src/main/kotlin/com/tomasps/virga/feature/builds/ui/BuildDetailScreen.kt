@@ -252,7 +252,7 @@ private fun DetailList(
         state.logError?.let { error ->
             gappedItem { Text(text = error.message.asString(), style = MaterialTheme.typography.bodySmall) }
         }
-        items(state.logLines.size) { index ->
+        items(count = state.logLines.size, contentType = { "log-line" }) { index ->
             LogLine(
                 text = state.logLines[index],
                 index = index,

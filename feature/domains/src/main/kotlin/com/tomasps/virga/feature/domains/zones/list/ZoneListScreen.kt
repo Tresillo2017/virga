@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -139,7 +140,7 @@ private fun ZoneListBody(
     val zones = state.zones
     if (zones == null) return
     UiStateContent(state = zones, onRetry = onRetry, modifier = Modifier.padding(padding)) { all ->
-        val visible = state.visibleZones()
+        val visible = remember(state) { state.visibleZones() }
         Column(Modifier.fillMaxSize()) {
             SearchField(
                 query = state.query,
@@ -217,7 +218,7 @@ private fun ZoneRow(zone: Zone, onClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddZoneSheet(creating: Boolean, error: UiText?, onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
-    var name by remember { mutableStateOf("") }
+    var name by rememberSaveable { mutableStateOf("") }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),

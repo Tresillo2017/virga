@@ -69,12 +69,14 @@ fun WearApp(startRoute: String? = null) {
                 ) { entry ->
                     val script = entry.arguments?.getString(ARG_SCRIPT).orEmpty()
                     val uuid = entry.arguments?.getString(ARG_UUID).orEmpty()
-                    // Found by key, once: the list may reload or reorder behind this screen without changing it.
-                    val build = remember(script, uuid) {
-                        (listViewModel.state.value as? ListState.Content)?.builds?.findByKey(script, uuid)
-                    }
+                    // Found by key once the list has loaded, then kept: the list may reload or reorder behind this
+                    // screen without changing it. While the list is still loading (after process death) wait, never pop.
+                    val listNow by listViewModel.state.collectAsState()
+                    var found by remember(script, uuid) { mutableStateOf<BuildSummary?>(null) }
+                    if (found == null) found = (listNow as? ListState.Content)?.builds?.findByKey(script, uuid)
+                    val build = found
                     if (build == null) {
-                        LaunchedEffect(Unit) { nav.popBackStack() }
+                        if (listNow !is ListState.Loading) LaunchedEffect(Unit) { nav.popBackStack() }
                         return@composable
                     }
                     val detailViewModel = koinViewModel<BuildDetailViewModel>(

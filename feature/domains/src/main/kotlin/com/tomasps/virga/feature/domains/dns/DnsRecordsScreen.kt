@@ -31,6 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,7 +67,7 @@ fun DnsRecordsScreenRoute(zoneId: String) {
     val dnssec: DnssecViewModel = koinViewModel(parameters = { parametersOf(zoneId) })
     val dnsSettings: ZoneDnsSettingsViewModel = koinViewModel(parameters = { parametersOf(zoneId) })
     val state by records.state.collectAsState()
-    var tab by remember { mutableStateOf(0) }
+    var tab by rememberSaveable { mutableStateOf(0) }
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
@@ -212,7 +213,7 @@ private fun ActiveTypeFilter(type: String, onClear: () -> Unit) {
 
 @Composable
 private fun RecordList(state: DnsRecordsUiState, viewModel: DnsRecordsViewModel) {
-    val visible = state.visibleRecords()
+    val visible = remember(state) { state.visibleRecords() }
     if (visible.isEmpty()) {
         RecordsEmptyState(state, onClear = { viewModel.setTypeFilter(null) })
         return

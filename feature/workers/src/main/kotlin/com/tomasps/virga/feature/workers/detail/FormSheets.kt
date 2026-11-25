@@ -18,6 +18,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -39,7 +40,7 @@ private val SHEET_SPACING = 8.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun AddDomainSheet(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
-    var hostname by remember { mutableStateOf("") }
+    var hostname by rememberSaveable { mutableStateOf("") }
     val isBlank = hostname.isBlank()
     val isInvalid = !isBlank && !isValidHostname(hostname)
     ModalBottomSheet(
@@ -88,8 +89,8 @@ internal fun AddDomainSheet(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun AddSecretSheet(onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var value by remember { mutableStateOf("") }
+    var name by rememberSaveable { mutableStateOf("") }
+    var value by rememberSaveable { mutableStateOf("") }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),

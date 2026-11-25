@@ -26,6 +26,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -200,12 +201,12 @@ private fun EditConfigSheet(
     onSave: (BuildConfigEdit) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var branch by remember { mutableStateOf(config.productionBranch.orEmpty()) }
-    var buildCommand by remember { mutableStateOf(config.buildCommand.orEmpty()) }
-    var deployCommand by remember { mutableStateOf(config.deployCommand.orEmpty()) }
-    var rootDirectory by remember { mutableStateOf(config.rootDirectory.orEmpty()) }
-    var previews by remember { mutableStateOf(config.previewsEnabled == true) }
-    var branchMissing by remember { mutableStateOf(false) }
+    var branch by rememberSaveable { mutableStateOf(config.productionBranch.orEmpty()) }
+    var buildCommand by rememberSaveable { mutableStateOf(config.buildCommand.orEmpty()) }
+    var deployCommand by rememberSaveable { mutableStateOf(config.deployCommand.orEmpty()) }
+    var rootDirectory by rememberSaveable { mutableStateOf(config.rootDirectory.orEmpty()) }
+    var previews by rememberSaveable { mutableStateOf(config.previewsEnabled == true) }
+    var branchMissing by rememberSaveable { mutableStateOf(false) }
 
     fun submit() {
         if (branch.isBlank()) {

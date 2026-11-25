@@ -20,6 +20,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.tomasps.virga.core.auth.session.SessionState
+import com.tomasps.virga.core.navigation.BuildDetail
 import com.tomasps.virga.core.navigation.HomeRoot
 import com.tomasps.virga.core.navigation.LocalNavigator
 import com.tomasps.virga.core.navigation.Navigator
@@ -52,7 +53,13 @@ fun ShellHost(
     // One effect, so the session's stack fix-up always runs before any pending link is shown.
     LaunchedEffect(sessionState) {
         keepStackMatchingSession(sessionState, navigator)
-        if (sessionState is SessionState.SignedIn) pending.keys.collect { navigator.navigate(it) }
+        if (sessionState is SessionState.SignedIn) {
+            val knownAccountIds = sessionState.accounts.map { it.id }.toSet()
+            // A browsable link can name any account: only open builds that belong to one signed in here.
+            pending.keys.collect { key ->
+                if (key !is BuildDetail || key.accountId in knownAccountIds) navigator.navigate(key)
+            }
+        }
     }
 
     // Back on a bottom tab's root (other than Home) returns to Home. On Home the handler is off, so the system leaves the app.
