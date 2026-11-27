@@ -2,7 +2,7 @@
 agp = "9.5.1"
 kotlin = "2.4.21"
 kover = "0.9.11"
-composeBom = "2026.09.00"
+composeBom = "2026.11.01"
 activityCompose = "1.13.0"
 biometric = "1.1.0"
 lifecycle = "2.11.0"
@@ -45,9 +45,9 @@ androidx-compose-ui = { module = "androidx.compose.ui:ui" }
 androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 # Pinned above the BOM: the BOM resolves 1.4.0, which lacks the M3 Expressive APIs (MotionScheme, LoadingIndicator, ButtonGroup).
-androidx-compose-material3 = { module = "androidx.compose.material3:material3", version = "1.5.0-rc01" }
+androidx-compose-material3 = { module = "androidx.compose.material3:material3", version = "1.6.0-alpha01" }
 # Same pin as material3: the adaptive navigation suite (bottom bar on compact, rail on wider windows) ships with it.
-androidx-compose-material3-adaptive-navigation-suite = { module = "androidx.compose.material3:material3-adaptive-navigation-suite", version = "1.5.0-rc01" }
+androidx-compose-material3-adaptive-navigation-suite = { module = "androidx.compose.material3:material3-adaptive-navigation-suite", version = "1.6.0-alpha01" }
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
